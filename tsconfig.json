@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es2018",
+      "es2019",
+      "es2020",
+      "esnext"
+    ],
+    "moduleResolution": "node",
+    "strict": true,
+    "sourceMap": true,
+    "baseUrl": "src",
+    "target": "es6",
+    "module": "commonjs",
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  },
+  "include": [
+    "src",
+  ]
+}
