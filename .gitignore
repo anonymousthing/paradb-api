@@ -1,5 +1,6 @@
 # Frontend symlink
 /fe
+/.env
 
 # Logs
 logs

@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 import express from 'express';
 import path from 'path';
 import apiRouter from './api';
