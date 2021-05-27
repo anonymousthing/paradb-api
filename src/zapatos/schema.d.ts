@@ -21,47 +21,336 @@ declare module 'zapatos/schema' {
 
   /* --- tables --- */
 
+  export namespace complexities {
+    export type Table = 'complexities';
+    export interface Selectable {
+      /**
+      * **complexities.map_id**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      map_id: string;
+      /**
+      * **complexities.complexity**
+      * - `int4` in database
+      * - `NOT NULL`, no default
+      */
+      complexity: number;
+      /**
+      * **complexities.complexity_name**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      complexity_name: string | null;
+    }
+    export interface JSONSelectable {
+      /**
+      * **complexities.map_id**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      map_id: string;
+      /**
+      * **complexities.complexity**
+      * - `int4` in database
+      * - `NOT NULL`, no default
+      */
+      complexity: number;
+      /**
+      * **complexities.complexity_name**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      complexity_name: string | null;
+    }
+    export interface Whereable {
+      /**
+      * **complexities.map_id**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      map_id?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
+      /**
+      * **complexities.complexity**
+      * - `int4` in database
+      * - `NOT NULL`, no default
+      */
+      complexity?: number | db.Parameter<number> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, number | db.Parameter<number> | db.SQLFragment | db.ParentColumn>;
+      /**
+      * **complexities.complexity_name**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      complexity_name?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
+    }
+    export interface Insertable {
+      /**
+      * **complexities.map_id**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      map_id: string | db.Parameter<string> | db.SQLFragment;
+      /**
+      * **complexities.complexity**
+      * - `int4` in database
+      * - `NOT NULL`, no default
+      */
+      complexity: number | db.Parameter<number> | db.SQLFragment;
+      /**
+      * **complexities.complexity_name**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      complexity_name?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment;
+    }
+    export interface Updatable {
+      /**
+      * **complexities.map_id**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      map_id?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
+      /**
+      * **complexities.complexity**
+      * - `int4` in database
+      * - `NOT NULL`, no default
+      */
+      complexity?: number | db.Parameter<number> | db.SQLFragment | db.SQLFragment<any, number | db.Parameter<number> | db.SQLFragment>;
+      /**
+      * **complexities.complexity_name**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      complexity_name?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment>;
+    }
+    export type UniqueIndex = never;
+    export type Column = keyof Selectable;
+    export type OnlyCols<T extends readonly Column[]> = Pick<Selectable, T[number]>;
+    export type SQLExpression = db.GenericSQLExpression | db.ColumnNames<Updatable | (keyof Updatable)[]> | db.ColumnValues<Updatable> | Table | Whereable | Column;
+    export type SQL = SQLExpression | SQLExpression[];
+  }
+
   export namespace maps {
     export type Table = 'maps';
     export interface Selectable {
       /**
-      * **maps.title**
+      * **maps.id**
       * - `varchar` in database
       * - `NOT NULL`, no default
       */
-      title: string;
-    }
-    export interface JSONSelectable {
+      id: string;
       /**
       * **maps.title**
       * - `varchar` in database
       * - `NOT NULL`, no default
       */
       title: string;
+      /**
+      * **maps.artist**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      artist: string;
+      /**
+      * **maps.author**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      author: string | null;
+      /**
+      * **maps.uploader**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      uploader: string;
+      /**
+      * **maps.description**
+      * - `text` in database
+      * - Nullable, no default
+      */
+      description: string | null;
+      /**
+      * **maps.download_link**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      download_link: string;
+    }
+    export interface JSONSelectable {
+      /**
+      * **maps.id**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      id: string;
+      /**
+      * **maps.title**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      title: string;
+      /**
+      * **maps.artist**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      artist: string;
+      /**
+      * **maps.author**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      author: string | null;
+      /**
+      * **maps.uploader**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      uploader: string;
+      /**
+      * **maps.description**
+      * - `text` in database
+      * - Nullable, no default
+      */
+      description: string | null;
+      /**
+      * **maps.download_link**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      download_link: string;
     }
     export interface Whereable {
+      /**
+      * **maps.id**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      id?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
       /**
       * **maps.title**
       * - `varchar` in database
       * - `NOT NULL`, no default
       */
       title?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
+      /**
+      * **maps.artist**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      artist?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
+      /**
+      * **maps.author**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      author?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
+      /**
+      * **maps.uploader**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      uploader?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
+      /**
+      * **maps.description**
+      * - `text` in database
+      * - Nullable, no default
+      */
+      description?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
+      /**
+      * **maps.download_link**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      download_link?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
     }
     export interface Insertable {
+      /**
+      * **maps.id**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      id: string | db.Parameter<string> | db.SQLFragment;
       /**
       * **maps.title**
       * - `varchar` in database
       * - `NOT NULL`, no default
       */
       title: string | db.Parameter<string> | db.SQLFragment;
+      /**
+      * **maps.artist**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      artist: string | db.Parameter<string> | db.SQLFragment;
+      /**
+      * **maps.author**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      author?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment;
+      /**
+      * **maps.uploader**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      uploader: string | db.Parameter<string> | db.SQLFragment;
+      /**
+      * **maps.description**
+      * - `text` in database
+      * - Nullable, no default
+      */
+      description?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment;
+      /**
+      * **maps.download_link**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      download_link: string | db.Parameter<string> | db.SQLFragment;
     }
     export interface Updatable {
+      /**
+      * **maps.id**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      id?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
       /**
       * **maps.title**
       * - `varchar` in database
       * - `NOT NULL`, no default
       */
       title?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
+      /**
+      * **maps.artist**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      artist?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
+      /**
+      * **maps.author**
+      * - `varchar` in database
+      * - Nullable, no default
+      */
+      author?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment>;
+      /**
+      * **maps.uploader**
+      * - `varchar` in database
+      * - `NOT NULL`, no default
+      */
+      uploader?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
+      /**
+      * **maps.description**
+      * - `text` in database
+      * - Nullable, no default
+      */
+      description?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment>;
+      /**
+      * **maps.download_link**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      download_link?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
     }
     export type UniqueIndex = never;
     export type Column = keyof Selectable;
@@ -72,47 +361,55 @@ declare module 'zapatos/schema' {
 
   /* === cross-table types === */
 
-  export type Table = maps.Table;
-  export type Selectable = maps.Selectable;
-  export type JSONSelectable = maps.JSONSelectable;
-  export type Whereable = maps.Whereable;
-  export type Insertable = maps.Insertable;
-  export type Updatable = maps.Updatable;
-  export type UniqueIndex = maps.UniqueIndex;
-  export type Column = maps.Column;
-  export type AllTables = [maps.Table];
+  export type Table = complexities.Table | maps.Table;
+  export type Selectable = complexities.Selectable | maps.Selectable;
+  export type JSONSelectable = complexities.JSONSelectable | maps.JSONSelectable;
+  export type Whereable = complexities.Whereable | maps.Whereable;
+  export type Insertable = complexities.Insertable | maps.Insertable;
+  export type Updatable = complexities.Updatable | maps.Updatable;
+  export type UniqueIndex = complexities.UniqueIndex | maps.UniqueIndex;
+  export type Column = complexities.Column | maps.Column;
+  export type AllTables = [complexities.Table, maps.Table];
   export type AllMaterializedViews = [];
 
 
   export type SelectableForTable<T extends Table> = {
+    complexities: complexities.Selectable;
     maps: maps.Selectable;
   }[T];
 
   export type JSONSelectableForTable<T extends Table> = {
+    complexities: complexities.JSONSelectable;
     maps: maps.JSONSelectable;
   }[T];
 
   export type WhereableForTable<T extends Table> = {
+    complexities: complexities.Whereable;
     maps: maps.Whereable;
   }[T];
 
   export type InsertableForTable<T extends Table> = {
+    complexities: complexities.Insertable;
     maps: maps.Insertable;
   }[T];
 
   export type UpdatableForTable<T extends Table> = {
+    complexities: complexities.Updatable;
     maps: maps.Updatable;
   }[T];
 
   export type UniqueIndexForTable<T extends Table> = {
+    complexities: complexities.UniqueIndex;
     maps: maps.UniqueIndex;
   }[T];
 
   export type ColumnForTable<T extends Table> = {
+    complexities: complexities.Column;
     maps: maps.Column;
   }[T];
 
   export type SQLForTable<T extends Table> = {
+    complexities: complexities.SQL;
     maps: maps.SQL;
   }[T];
 

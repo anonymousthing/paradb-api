@@ -1,3 +1,6 @@
+# Frontend symlink
+/fe
+
 # Logs
 logs
 *.log
