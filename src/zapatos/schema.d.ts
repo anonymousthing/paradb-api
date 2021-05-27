@@ -175,6 +175,12 @@ declare module 'zapatos/schema' {
       * - `NOT NULL`, no default
       */
       download_link: string;
+      /**
+      * **maps.album_art**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      album_art: string;
     }
     export interface JSONSelectable {
       /**
@@ -219,6 +225,12 @@ declare module 'zapatos/schema' {
       * - `NOT NULL`, no default
       */
       download_link: string;
+      /**
+      * **maps.album_art**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      album_art: string;
     }
     export interface Whereable {
       /**
@@ -263,6 +275,12 @@ declare module 'zapatos/schema' {
       * - `NOT NULL`, no default
       */
       download_link?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
+      /**
+      * **maps.album_art**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      album_art?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
     }
     export interface Insertable {
       /**
@@ -307,6 +325,12 @@ declare module 'zapatos/schema' {
       * - `NOT NULL`, no default
       */
       download_link: string | db.Parameter<string> | db.SQLFragment;
+      /**
+      * **maps.album_art**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      album_art: string | db.Parameter<string> | db.SQLFragment;
     }
     export interface Updatable {
       /**
@@ -351,6 +375,12 @@ declare module 'zapatos/schema' {
       * - `NOT NULL`, no default
       */
       download_link?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
+      /**
+      * **maps.album_art**
+      * - `text` in database
+      * - `NOT NULL`, no default
+      */
+      album_art?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
     }
     export type UniqueIndex = never;
     export type Column = keyof Selectable;

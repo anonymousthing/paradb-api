@@ -12,7 +12,7 @@ apiRouter.get('/map', async (req, res) => {
     lateral: {
       complexities: db.select('complexities', { map_id: db.parent('id') }, { columns: ['complexity', 'complexity_name'] }),
     },
-    columns: ['id', 'title', 'artist', 'author', 'uploader', 'description', 'download_link']
+    columns: ['id', 'title', 'artist', 'author', 'uploader', 'description', 'download_link', 'album_art']
   }).run(pool);
   res.write(xssiPrefix);
   res.write(JSON.stringify({
