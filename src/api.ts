@@ -24,6 +24,7 @@ apiRouter.get('/map', async (req, res) => {
   }));
   res.end();
 });
+
 apiRouter.get('/map/:mapId', async (req, res) => {
   const id = req.params.mapId;
   const map = await db.selectExactlyOne('maps', { id }, {
