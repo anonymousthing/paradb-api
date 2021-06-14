@@ -1,4 +1,4 @@
-DROP TABLE maps;
+DROP TABLE IF EXISTS maps;
 CREATE TABLE maps (
   id varchar(16) not null,
   title varchar(256) not null,
@@ -10,7 +10,7 @@ CREATE TABLE maps (
   album_art text
 );
 
-DROP TABLE complexities;
+DROP TABLE IF EXISTS complexities;
 CREATE TABLE complexities (
   map_id varchar(32) not null,
   complexity int not null,

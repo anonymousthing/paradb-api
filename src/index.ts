@@ -1,5 +1,9 @@
 require('dotenv').config();
 
+if (process.env.PGUSER == '' && process.env.PGPASSWORD == '') {
+  console.error('PGUSER and PGPASSWORD have been left blank in .env -- intentional?');
+}
+
 import express from 'express';
 import path from 'path';
 import apiRouter from './api';
