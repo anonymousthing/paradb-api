@@ -6,10 +6,12 @@ import express from 'express';
 const mapsRouter = express.Router({ strict: true });
 
 mapsRouter.get('/', xssi, async (req, res) => {
-  const maps = await listMaps();
-  res.json({
-    maps: maps.map(m => camelCaseKeys(m))
-  });
+  const result = await listMaps();
+  if (result.success === false) {
+    // TODO: API -> FE error handling
+    throw new Error();
+  }
+  res.json({ maps: result.value });
 });
 
 mapsRouter.get('/:mapId', xssi, async (req, res) => {

@@ -28,10 +28,12 @@ function deserializeParaDbSession(user: unknown): ParaDbSession {
 
 export function installSession() {
   passport.use(new LocalStrategy(async (username, password, done) => {
-    const user = await getUser({ by: 'username', username });
-    if (!user) {
+    const result = await getUser({ by: 'username', username });
+    if (result.success === false) {
+      // TODO: API -> FE error handling
       return done(null, false, { message: 'invalid-credentials' });
     }
+    const user = result.value;
     const isValid = await validatePassword(password, user.password);
     if (!isValid) {
       return done(null, false, { message: 'invalid-credentials' });

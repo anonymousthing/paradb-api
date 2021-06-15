@@ -25,8 +25,12 @@ type SignupRequest = Reify<typeof serializeSignupRequest>;
 usersRouter.post('/signup', xssi, async (req, res) => {
   const signupRequest = deserializeSignupRequest(req.body);
   const { username, email, password } = signupRequest;
-  const user = await createUser({ username, email, password });
-  req.login(createSessionFromUser(user), err => {
+  const result = await createUser({ username, email, password });
+  // TODO: API -> FE error handling
+  if (result.success === false) {
+    throw new Error();
+  }
+  req.login(createSessionFromUser(result.value), err => {
     if (err) {
       throw new Error(err);
     }
