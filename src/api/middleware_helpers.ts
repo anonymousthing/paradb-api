@@ -6,6 +6,7 @@ export const guardAuth = (req: Request, res: Response, next: () => void) => {
   }
   next();
 };
+
 const XSSI_PREFIX = '\'"])}while(1);</x>//';
 export const xssi = (req: Request, res: Response, next: () => void) => {
   const originalSend = res.send;

@@ -18,5 +18,4 @@ mapsRouter.get('/:mapId', xssi, async (req, res) => {
   res.json({ map: camelCaseKeys(map) });
 });
 
-
 export default mapsRouter;
