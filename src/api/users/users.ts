@@ -11,8 +11,8 @@ usersRouter.get('/me', guardAuth, xssi, (req, res) => {
   res.json((req.session as any).passport.user);
 });
 
-usersRouter.post('/login', passport.authenticate('local'), (req, res) => {
-  res.end();
+usersRouter.post('/login', xssi, passport.authenticate('local'), (req, res) => {
+  res.json({ success: true });
 });
 
 const [serializeSignupRequest, deserializeSignupRequest] = rec('signupRequest', {
@@ -28,7 +28,7 @@ usersRouter.post('/signup', xssi, async (req, res) => {
   const result = await createUser({ username, email, password });
   // TODO: API -> FE error handling
   if (result.success === false) {
-    throw new Error();
+    throw new Error(result.error);
   }
   req.login(createSessionFromUser(result.value), err => {
     if (err) {

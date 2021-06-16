@@ -86,6 +86,8 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
         success: false,
         error: CreateUserError.TOO_MANY_ID_GEN_ATTEMPTS,
       };
+    } else {
+      break;
     }
   }
   const now = new Date();
