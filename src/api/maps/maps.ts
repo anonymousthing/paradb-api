@@ -16,8 +16,12 @@ mapsRouter.get('/', xssi, async (req, res) => {
 
 mapsRouter.get('/:mapId', xssi, async (req, res) => {
   const id = req.params.mapId;
-  const map = await getMap(id);
-  res.json({ map: camelCaseKeys(map) });
+  const result = await getMap(id);
+  if (result.success === false) {
+    // TODO: API -> FE error handling
+    throw new Error();
+  }
+  res.json({ map: camelCaseKeys(result.value) });
 });
 
 export default mapsRouter;

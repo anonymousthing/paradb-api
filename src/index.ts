@@ -32,11 +32,12 @@ app.get('/favicon.ico', (req, res) => {
 app.use('/api', apiRouter);
 
 // Serve static assets
-app.use('/static', express.static(path.join(__dirname, '../fe/static')));
+app.use('/static', express.static(path.join(__dirname, '../fe/')));
 // Always serve the React SPA for all non-static and non-api routes.
 app.get([
   '/',
   '/login',
+  '/map/*',
 ], (req, res) => {
   res.sendFile(path.join(__dirname, '../fe/index.html'));
 });
