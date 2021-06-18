@@ -7,8 +7,8 @@ import { createSessionFromUser } from 'session/session';
 
 const usersRouter = express.Router({ strict: true });
 
-usersRouter.get('/me', guardAuth, xssi, (req, res) => {
-  res.json((req.session as any).passport.user);
+usersRouter.get('/me', xssi, guardAuth, (req, res) => {
+  res.json({ success: true, user: req.user });
 });
 
 usersRouter.post('/login', xssi, passport.authenticate('local'), (req, res) => {
@@ -34,13 +34,8 @@ usersRouter.post('/signup', xssi, async (req, res) => {
     if (err) {
       throw new Error(err);
     }
-    res.end();
+    res.json({ success: true });
   });
-});
-
-usersRouter.post('/logout', xssi, (req, res) => {
-  req.logout();
-  res.end();
 });
 
 export default usersRouter;

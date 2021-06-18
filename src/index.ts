@@ -37,9 +37,14 @@ app.use('/static', express.static(path.join(__dirname, '../fe/')));
 app.get([
   '/',
   '/login',
+  '/signup',
   '/map/*',
 ], (req, res) => {
   res.sendFile(path.join(__dirname, '../fe/index.html'));
+});
+app.get('/logout', (req, res) => {
+  req.logout();
+  res.redirect('/');
 });
 
 app.listen(port, () => {
