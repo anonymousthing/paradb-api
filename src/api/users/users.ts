@@ -1,7 +1,7 @@
 import { guardAuth, xssi } from 'api/middleware_helpers';
-import { rec, Reify, str } from 'base/serialization';
 import { createUser } from 'db/users/users_repo';
 import express from 'express';
+import { deserializeSignupRequest } from 'paradb-api-schema';
 import passport from 'passport';
 import { createSessionFromUser } from 'session/session';
 
@@ -14,13 +14,6 @@ usersRouter.get('/me', xssi, guardAuth, (req, res) => {
 usersRouter.post('/login', xssi, passport.authenticate('local'), (req, res) => {
   res.json({ success: true });
 });
-
-const [serializeSignupRequest, deserializeSignupRequest] = rec('signupRequest', {
-  username: str('username'),
-  email: str('email'),
-  password: str('password'),
-});
-type SignupRequest = Reify<typeof serializeSignupRequest>;
 
 usersRouter.post('/signup', xssi, async (req, res) => {
   const signupRequest = deserializeSignupRequest(req.body);
