@@ -1,10 +1,13 @@
 import { PromisedResult } from 'base/result';
-import { CamelCase, camelCaseKeys } from 'db/helpers';
+import { CamelCase, camelCaseKeys, NullToUndefined } from 'db/helpers';
 import pool from 'db/pool';
 import * as db from 'zapatos/db';
-import { maps } from 'zapatos/schema';
+import { complexities, maps } from 'zapatos/schema';
 
-type Map = CamelCase<maps.JSONSelectable>;
+type Complexity = CamelCase<Pick<complexities.JSONSelectable, 'complexity' | 'complexity_name'>>;
+type Map = NullToUndefined<CamelCase<maps.JSONSelectable> & {
+  complexities: Complexity[],
+}>;
 
 export const enum ListMapError {
   UNKNOWN_DB_ERROR = 'unknown_db_error',
@@ -23,7 +26,7 @@ export async function listMaps(): PromisedResult<Map[], ListMapError> {
     }).run(pool);
     return {
       success: true,
-      value: maps.map(m => camelCaseKeys(m)),
+      value: maps.map(m => camelCaseKeys(m)) as Map[],
     };
   } catch (e) {
     return {
@@ -46,7 +49,7 @@ export async function getMap(id: string): PromisedResult<Map, GetMapError> {
     }).run(pool);
     return {
       success: true,
-      value: camelCaseKeys(map),
+      value: camelCaseKeys(map) as Map,
     };
   } catch (e) {
     return {

@@ -18,16 +18,16 @@ usersRouter.get('/me', xssi, guardAuth, (req, res) => {
   res.json({ success: true, user: req.user });
 });
 
-usersRouter.post('/login', xssi, async (req, res): Promise<Response<any, LoginResponse>> => {
+usersRouter.post('/login', xssi, async (req, res: Response<LoginResponse, {}>) => {
   try {
     await authenticate(req, res);
-    return (res as Response<any, LoginResponse>).json({ success: true });
+    return res.json({ success: true });
   } catch (e) {
     return error(res, 401, 'Invalid credentials', {});
   }
 });
 
-usersRouter.post('/signup', xssi, async (req, res): Promise<Response<any, SignupResponse>> => {
+usersRouter.post('/signup', xssi, async (req, res: Response<SignupResponse, {}>) => {
   const signupRequest = deserializeSignupRequest(req.body);
   const { username, email, password } = signupRequest;
   const result = await createUser({ username, email, password });
@@ -73,7 +73,7 @@ usersRouter.post('/signup', xssi, async (req, res): Promise<Response<any, Signup
   } catch (e) {
     return error(res, 500, 'Could not login as newly created user.', { username: undefined, email: undefined, password: undefined });
   }
-  return (res as Response<any, SignupResponse>).json({ success: true });
+  return res.json({ success: true });
 });
 
 async function authenticate(req: Request, resp: Response): Promise<void> {

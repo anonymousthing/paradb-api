@@ -3,6 +3,16 @@ import _camelcaseKeys from 'camelcase-keys-recursive';
 import _snakecaseKeys from 'snakecase-keys';
 import { ByteArrayString, toBuffer } from 'zapatos/db';
 
+export type NullToUndefined<T> = T extends object
+  ? {
+    [K in keyof T]: T[K] extends null
+      ? NonNullable<NullToUndefined<T[K]>> | undefined
+      : NullToUndefined<T[K]>
+  }
+  : T extends null
+    ? NonNullable<T> | undefined
+    : T;
+
 type CamelCaseKey<T extends PropertyKey> =
   T extends string
     ? string extends T
