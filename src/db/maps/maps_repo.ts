@@ -18,7 +18,7 @@ export async function listMaps(): PromisedResult<Map[], ListMapError> {
       lateral: {
         complexities: db.select('complexities', { map_id: db.parent('id') }, { columns: ['complexity', 'complexity_name'] }),
       },
-      columns: ['id', 'title', 'artist', 'author', 'uploader', 'description', 'download_link', 'album_art'],
+      columns: ['id', 'submission_date', 'title', 'artist', 'author', 'uploader', 'description', 'download_link', 'album_art'],
       order: {
         by: 'title',
         direction: 'ASC',
@@ -45,7 +45,7 @@ export async function getMap(id: string): PromisedResult<Map, GetMapError> {
       lateral: {
         complexities: db.select('complexities', { map_id: db.parent('id') }, { columns: ['complexity', 'complexity_name'] }),
       },
-      columns: ['id', 'title', 'artist', 'author', 'uploader', 'description', 'download_link', 'album_art'],
+      columns: ['id', 'submission_date', 'title', 'artist', 'author', 'uploader', 'description', 'download_link', 'album_art'],
     }).run(pool);
     return {
       success: true,

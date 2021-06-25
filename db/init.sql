@@ -1,5 +1,6 @@
 CREATE TABLE maps (
   id varchar(16) primary key,
+  submission_date timestamp not null,
   title varchar(256) not null,
   artist varchar(256) not null,
   author varchar(256),
