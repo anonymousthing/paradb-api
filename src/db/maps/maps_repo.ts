@@ -28,7 +28,7 @@ export async function listMaps(): PromisedResult<Map[], ListMapError> {
   } catch (e) {
     return {
       success: false,
-      error: ListMapError.UNKNOWN_DB_ERROR,
+      errors: [{ type: ListMapError.UNKNOWN_DB_ERROR }],
     };
   }
 }
@@ -51,7 +51,7 @@ export async function getMap(id: string): PromisedResult<Map, GetMapError> {
   } catch (e) {
     return {
       success: false,
-      error: GetMapError.UNKNOWN_DB_ERROR,
+      errors: [{ type: GetMapError.UNKNOWN_DB_ERROR }],
     };
   }
 };

@@ -176,6 +176,11 @@
     "@types/mime" "^1"
     "@types/node" "*"
 
+"@types/zxcvbn@^4.4.1":
+  version "4.4.1"
+  resolved "https://registry.yarnpkg.com/@types/zxcvbn/-/zxcvbn-4.4.1.tgz#46e42cbdcee681b22181478feaf4af2bc4c1abd2"
+  integrity sha512-3NoqvZC2W5gAC5DZbTpCeJ251vGQmgcWIHQJGq2J240HY6ErQ9aWKkwfoKJlHLx+A83WPNTZ9+3cd2ILxbvr1w==
+
 abbrev@1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.1.1.tgz#f8f2c887ad10bf67f634f005b6987fed3179aac8"
@@ -1976,3 +1981,8 @@ zapatos@^4.0.3:
   version "4.0.3"
   resolved "https://registry.yarnpkg.com/zapatos/-/zapatos-4.0.3.tgz#7e647fdb29dabcd91a75bf1191f90ca3caa17b8d"
   integrity sha512-g5Qk/9nkKStcGlCntoM8WrJLMrj0tlhe8oTggKeTbNVSLJeE7DGxz5z9l57nxK0fr+Ct67ZvHKkhnfG/GaSsqw==
+
+zxcvbn@^4.4.2:
+  version "4.4.2"
+  resolved "https://registry.yarnpkg.com/zxcvbn/-/zxcvbn-4.4.2.tgz#28ec17cf09743edcab056ddd8b1b06262cc73c30"
+  integrity sha1-KOwXzwl0PtyrBW3dixsGJizHPDA=

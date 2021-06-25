@@ -11,3 +11,9 @@ export function checkIsString(t: any, propName: string): string {
   }
   return t;
 }
+
+export class UnreachableError extends Error {
+  constructor(x: never) {
+    super(`Expected ${x} to be of type "never" but had value ${JSON.stringify(x)}`)
+  }
+}

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { ApiError } from 'paradb-api-schema';
 
 export const guardAuth = (req: Request, res: Response, next: () => void) => {
   if (!req.isAuthenticated()) {
@@ -24,3 +25,8 @@ export const xssi = (req: Request, res: Response, next: () => void) => {
   };
   next();
 };
+
+export function error<P, T extends ApiError & P>(res: Response, statusCode: number, message: string, additionalProps: P): Response<any, T> {
+  const err: T = { success: false, statusCode, errorMessage: message, ...additionalProps } as T;
+  return (res as Response<any, T>).json(err);
+}
