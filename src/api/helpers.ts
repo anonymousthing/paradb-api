@@ -28,5 +28,5 @@ export const xssi = (req: Request, res: Response, next: () => void) => {
 
 export function error<P, T extends ApiError & P>(res: Response, statusCode: number, message: string, additionalProps: P): Response<any, T> {
   const err: T = { success: false, statusCode, errorMessage: message, ...additionalProps } as T;
-  return (res as Response<any, T>).json(err);
+  return (res as Response<any, T>).status(statusCode).json(err);
 }

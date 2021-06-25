@@ -2,7 +2,13 @@ import { error, guardAuth, xssi } from 'api/helpers';
 import { UnreachableError } from 'base/conditions';
 import { createUser, CreateUserError, User } from 'db/users/users_repo';
 import { Request, Response, Router } from 'express';
-import { ApiError, deserializeSignupRequest, SignupError, SignupResponse } from 'paradb-api-schema';
+import {
+  ApiError,
+  deserializeSignupRequest,
+  LoginResponse,
+  SignupError,
+  SignupResponse,
+} from 'paradb-api-schema';
 import passport from 'passport';
 import { createSessionFromUser } from 'session/session';
 
@@ -12,8 +18,13 @@ usersRouter.get('/me', xssi, guardAuth, (req, res) => {
   res.json({ success: true, user: req.user });
 });
 
-usersRouter.post('/login', xssi, passport.authenticate('local'), (req, res) => {
-  res.json({ success: true });
+usersRouter.post('/login', xssi, async (req, res): Promise<Response<any, LoginResponse>> => {
+  try {
+    await authenticate(req, res);
+    return (res as Response<any, LoginResponse>).json({ success: true });
+  } catch (e) {
+    return error(res, 401, 'Invalid credentials', {});
+  }
 });
 
 usersRouter.post('/signup', xssi, async (req, res): Promise<Response<any, SignupResponse>> => {
@@ -58,14 +69,31 @@ usersRouter.post('/signup', xssi, async (req, res): Promise<Response<any, Signup
     return error(res, statusCode, errorMessage, signupError);
   }
   try {
-    await login(req, result.value);
+    await establishSession(req, result.value);
   } catch (e) {
     return error(res, 500, 'Could not login as newly created user.', { username: undefined, email: undefined, password: undefined });
   }
   return (res as Response<any, SignupResponse>).json({ success: true });
 });
 
-async function login(req: Request, user: User): Promise<void> {
+async function authenticate(req: Request, resp: Response): Promise<void> {
+  return new Promise((resolve, reject) => {
+    passport.authenticate('local', (err, user, info) => {
+      // TODO: differentiate between 500 and invalid credentials
+      if (err || !user) {
+        reject(err);
+      }
+      req.login(user, err => {
+        if (err) {
+          reject(err);
+        }
+        resolve();
+      });
+    })(req, resp);
+  });
+}
+
+async function establishSession(req: Request, user: User): Promise<void> {
   return new Promise((res, rej) => {
     req.login(createSessionFromUser(user), err => {
       if (err) {
