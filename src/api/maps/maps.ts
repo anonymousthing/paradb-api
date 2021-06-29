@@ -1,7 +1,13 @@
-import { error, xssi } from 'api/helpers';
-import { getMap, listMaps } from 'db/maps/maps_repo';
+import { error, guardAuth, xssi } from 'api/helpers';
+import { createMap, getMap, listMaps } from 'db/maps/maps_repo';
 import { Response, Router } from 'express';
-import { FindMapsResponse, GetMapResponse } from 'paradb-api-schema';
+import {
+  deserializeSubmitMapRequest,
+  deserializeUserSession,
+  FindMapsResponse,
+  GetMapResponse,
+  SubmitMapResponse,
+} from 'paradb-api-schema';
 
 const mapsRouter = Router({ strict: true });
 
@@ -20,6 +26,18 @@ mapsRouter.get('/:mapId', xssi, async (req, res: Response<GetMapResponse, {}>) =
     return error(res, 500, 'Could not retrieve maps', {});
   }
   return res.json({ success: true, map: result.value });
+});
+
+mapsRouter.post('/submit', xssi, guardAuth, async (req, res: Response<SubmitMapResponse, {}>) => {
+  const user = deserializeUserSession(req.user);
+  const submitRequest = deserializeSubmitMapRequest(req.body);
+  const { title, artist, author, albumArt, complexities, description, downloadLink } = submitRequest;
+  const result = await createMap({ title, artist, author, uploader: user.id, albumArt, complexities, description, downloadLink });
+  if (!result.success) {
+    // TODO: granular errors
+    return error(res, 500, 'Could not submit map', { title: undefined, artist: undefined, downloadLink: undefined });
+  }
+  return res.json({ success: true, id: result.value.id });
 });
 
 export default mapsRouter;

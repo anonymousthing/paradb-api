@@ -2,7 +2,7 @@
 import { PromisedResult, ResultError } from 'base/result';
 import { createPassword } from 'crypto/crypto';
 import { CamelCase, camelCaseKeys, fromBytea, snakeCaseKeys, toBytea } from 'db/helpers';
-import { IdDomain, idGen } from 'db/id_gen';
+import { generateId, IdDomain } from 'db/id_gen';
 import pool from 'db/pool';
 import * as db from 'zapatos/db';
 import { users } from 'zapatos/schema';
@@ -84,7 +84,6 @@ export const enum CreateUserError {
   USERNAME_TAKEN = 'username_taken',
   EMAIL_TAKEN = 'email_taken',
 };
-export const MAX_ID_GEN_ATTEMPTS = 10;
 export async function createUser(opts: CreateUserOpts): PromisedResult<User, CreateUserError> {
   const errorResult: ResultError<CreateUserError> = { success: false, errors: [] };
   // Validate password requirements
@@ -114,20 +113,12 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
     return errorResult;
   }
 
-  // Create user ID
-  let id = idGen(IdDomain.USERS);
-  for (let i = 0; i < MAX_ID_GEN_ATTEMPTS; i++) {
-    // Regenerate ID if it matched a user
-    if ((await getUser({ by: 'id', id })).success) {
-      id = idGen(IdDomain.USERS);
-    } else if (i === MAX_ID_GEN_ATTEMPTS - 1) {
-      return {
-        success: false,
-        errors: [{ type: CreateUserError.TOO_MANY_ID_GEN_ATTEMPTS }],
-      };
-    } else {
-      break;
-    }
+  const id = await generateId(IdDomain.USERS, async (id) => (await getUser({ by: 'id', id })).success);
+  if (id == null) {
+    return {
+      success: false,
+      errors: [{ type: CreateUserError.TOO_MANY_ID_GEN_ATTEMPTS }],
+    };
   }
 
   const password = await createPassword(opts.password);
