@@ -101,6 +101,7 @@ export async function createMap(opts: CreateMapOpts): PromisedResult<PDMap, Crea
       downloadLink: opts.downloadLink,
     })).run(pool);
     const insertedComplexities = await db.insert('complexities', opts.complexities.map(c => snakeCaseKeys({
+      mapId: id,
       complexity: c.complexity,
       complexityName: c.complexityName || null,
     }))).run(pool);

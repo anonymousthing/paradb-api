@@ -27,9 +27,9 @@ declare module 'zapatos/schema' {
       /**
       * **complexities.map_id**
       * - `varchar` in database
-      * - Nullable, no default
+      * - `NOT NULL`, no default
       */
-      map_id: string | null;
+      map_id: string;
       /**
       * **complexities.complexity**
       * - `int4` in database
@@ -47,9 +47,9 @@ declare module 'zapatos/schema' {
       /**
       * **complexities.map_id**
       * - `varchar` in database
-      * - Nullable, no default
+      * - `NOT NULL`, no default
       */
-      map_id: string | null;
+      map_id: string;
       /**
       * **complexities.complexity**
       * - `int4` in database
@@ -67,7 +67,7 @@ declare module 'zapatos/schema' {
       /**
       * **complexities.map_id**
       * - `varchar` in database
-      * - Nullable, no default
+      * - `NOT NULL`, no default
       */
       map_id?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
       /**
@@ -87,9 +87,9 @@ declare module 'zapatos/schema' {
       /**
       * **complexities.map_id**
       * - `varchar` in database
-      * - Nullable, no default
+      * - `NOT NULL`, no default
       */
-      map_id?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment;
+      map_id: string | db.Parameter<string> | db.SQLFragment;
       /**
       * **complexities.complexity**
       * - `int4` in database
@@ -107,9 +107,9 @@ declare module 'zapatos/schema' {
       /**
       * **complexities.map_id**
       * - `varchar` in database
-      * - Nullable, no default
+      * - `NOT NULL`, no default
       */
-      map_id?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment>;
+      map_id?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
       /**
       * **complexities.complexity**
       * - `int4` in database

@@ -11,7 +11,7 @@ CREATE TABLE maps (
 );
 
 CREATE TABLE complexities (
-  map_id varchar(32) references maps (id),
+  map_id varchar(32) references maps (id) not null,
   complexity int not null,
   complexity_name varchar(256)
 );
