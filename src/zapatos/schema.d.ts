@@ -176,12 +176,6 @@ declare module 'zapatos/schema' {
       */
       description: string | null;
       /**
-      * **maps.download_link**
-      * - `text` in database
-      * - `NOT NULL`, no default
-      */
-      download_link: string;
-      /**
       * **maps.album_art**
       * - `text` in database
       * - Nullable, no default
@@ -231,12 +225,6 @@ declare module 'zapatos/schema' {
       * - Nullable, no default
       */
       description: string | null;
-      /**
-      * **maps.download_link**
-      * - `text` in database
-      * - `NOT NULL`, no default
-      */
-      download_link: string;
       /**
       * **maps.album_art**
       * - `text` in database
@@ -288,12 +276,6 @@ declare module 'zapatos/schema' {
       */
       description?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
       /**
-      * **maps.download_link**
-      * - `text` in database
-      * - `NOT NULL`, no default
-      */
-      download_link?: string | db.Parameter<string> | db.SQLFragment | db.ParentColumn | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment | db.ParentColumn>;
-      /**
       * **maps.album_art**
       * - `text` in database
       * - Nullable, no default
@@ -344,12 +326,6 @@ declare module 'zapatos/schema' {
       */
       description?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment;
       /**
-      * **maps.download_link**
-      * - `text` in database
-      * - `NOT NULL`, no default
-      */
-      download_link: string | db.Parameter<string> | db.SQLFragment;
-      /**
       * **maps.album_art**
       * - `text` in database
       * - Nullable, no default
@@ -399,12 +375,6 @@ declare module 'zapatos/schema' {
       * - Nullable, no default
       */
       description?: string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | null | db.DefaultType | db.SQLFragment>;
-      /**
-      * **maps.download_link**
-      * - `text` in database
-      * - `NOT NULL`, no default
-      */
-      download_link?: string | db.Parameter<string> | db.SQLFragment | db.SQLFragment<any, string | db.Parameter<string> | db.SQLFragment>;
       /**
       * **maps.album_art**
       * - `text` in database
