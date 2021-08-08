@@ -12,11 +12,11 @@ function idGen(domain: IdDomain) {
 
 export async function generateId(domain: IdDomain, testExistence: (id: string) => Promise<boolean>): Promise<string | undefined> {
   // Create user ID
-  let id = idGen(IdDomain.USERS);
+  let id = idGen(domain);
   for (let i = 0; i < MAX_ID_GEN_ATTEMPTS; i++) {
     // Regenerate ID if it matched a user
     if ((await testExistence(id))) {
-      id = idGen(IdDomain.USERS);
+      id = idGen(domain);
     } else if (i === MAX_ID_GEN_ATTEMPTS - 1) {
       return undefined;
     } else {
