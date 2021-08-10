@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+import * as Sentry from '@sentry/node';
 import { createApiRouter } from 'api/api';
 import cookieParser from 'cookie-parser';
 import session from 'cookie-session';
@@ -9,26 +10,26 @@ import passport from 'passport';
 import path from 'path';
 import { installSession } from 'session/session';
 
-type Whole<T> = {
-  [K in keyof T]: NonNullable<T[K]>;
-};
+type EnvVars = {
+  pgUser: string,
+  pgPassword: string,
+  mapsDir: string,
+  sentryDsn: string,
+}
 
-function getEnvVars() {
-  const envVars = {
+function setupEnvVars() {
+  const _envVars: { [K in keyof EnvVars]: EnvVars[K] | undefined} = {
     pgUser: process.env.PGUSER,
     pgPassword: process.env.PGPASSWORD,
     mapsDir: process.env.MAPS_DIR,
+    sentryDsn: process.env.SENTRY_DSN,
   };
-  for (const [key, value] of Object.entries(envVars)) {
+  for (const [key, value] of Object.entries(_envVars)) {
     if (value == null) {
       console.error(`${key} has been left blank in .env -- intentional?`);
     }
   }
-  return envVars as Whole<typeof envVars>;
-}
-
-async function main() {
-  const envVars = getEnvVars();
+  const envVars = _envVars as EnvVars;
 
   try {
     fs.access(envVars.mapsDir);
@@ -36,6 +37,10 @@ async function main() {
     throw new Error('Could not access maps dir; ' + e);
   }
 
+  return envVars;
+}
+
+async function main(envVars: EnvVars) {
   const port = 8080;
   const app = express();
 
@@ -82,4 +87,14 @@ async function main() {
   });
 }
 
-main();
+const envVars = setupEnvVars();
+
+Sentry.init({
+  dsn: envVars.sentryDsn,
+});
+
+try {
+  main(envVars);
+} catch (e) {
+  Sentry.captureException(e);
+}
