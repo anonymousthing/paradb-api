@@ -15,7 +15,7 @@ export function createMapsRouter(mapsDir: string) {
   mapsRouter.get('/', xssi, async (req, res: Response<FindMapsResponse, {}>) => {
     const result = await listMaps();
     if (!result.success) {
-      return error(res, 500, 'Could not retrieve map', {});
+      return error(res, 500, 'Could not retrieve map', {}, { message: result.errors[0].type });
     }
     return (res as Response<FindMapsResponse, {}>).json({ success: true, maps: result.value });
   });
@@ -24,7 +24,7 @@ export function createMapsRouter(mapsDir: string) {
     const id = req.params.mapId;
     const result = await getMap(id);
     if (result.success === false) {
-      return error(res, 500, 'Could not retrieve maps', {});
+      return error(res, 500, 'Could not retrieve maps', {}, { message: result.errors[0].type });
     }
     return res.json({ success: true, map: result.value });
   });
@@ -38,7 +38,13 @@ export function createMapsRouter(mapsDir: string) {
     });
     if (!result.success) {
       // TODO: granular errors
-      return error(res, 500, 'Could not submit map', { title: undefined, artist: undefined, downloadLink: undefined });
+      return error(
+        res,
+        500,
+        'Could not submit map',
+        { title: undefined, artist: undefined, downloadLink: undefined },
+        { message: result.errors[0].type },
+      );
     }
     return res.json({ success: true, id: result.value.id });
   });

@@ -66,7 +66,7 @@ usersRouter.post('/signup', xssi, async (req, res: Response<SignupResponse, {}>)
           throw new UnreachableError(error.type);
       }
     }
-    return error(res, statusCode, errorMessage, signupError);
+    return error(res, statusCode, errorMessage, signupError, { message: result.errors[0].type });
   }
   try {
     await establishSession(req, result.value);

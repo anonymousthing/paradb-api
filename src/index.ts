@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/node';
 import { createApiRouter } from 'api/api';
 import cookieParser from 'cookie-parser';
 import session from 'cookie-session';
+import pool from 'db/pool';
 import express from 'express';
 import * as fs from 'fs/promises';
 import passport from 'passport';
@@ -15,6 +16,7 @@ type EnvVars = {
   pgPassword: string,
   mapsDir: string,
   sentryDsn: string,
+  sentryEnvironment: string,
 }
 
 function setupEnvVars() {
@@ -23,6 +25,7 @@ function setupEnvVars() {
     pgPassword: process.env.PGPASSWORD,
     mapsDir: process.env.MAPS_DIR,
     sentryDsn: process.env.SENTRY_DSN,
+    sentryEnvironment: process.env.SENTRY_ENV,
   };
   for (const [key, value] of Object.entries(_envVars)) {
     if (value == null) {
@@ -41,10 +44,15 @@ function setupEnvVars() {
 }
 
 async function main(envVars: EnvVars) {
+  // Test DB
+  await pool.connect();
+
   const port = 8080;
   const app = express();
 
   installSession();
+
+  app.use(Sentry.Handlers.requestHandler());
 
   app.use(cookieParser());
   app.use(express.json({
@@ -56,9 +64,28 @@ async function main(envVars: EnvVars) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-
   app.get('/favicon.ico', (req, res) => {
     res.status(404).end();
+  });
+
+  const sentryBackend = new Sentry.NodeBackend({
+    attachStacktrace: true,
+  });
+
+  app.use(async (req, _res, next) => {
+    _res.on('finish', async () => {
+      const res: typeof _res & { paradbError?: Error, paradbErrorTags?: Record<string, string> } = _res;
+      if (res.paradbError && res.statusCode >= 400) {
+        const event = await sentryBackend.eventFromException(res.paradbError);
+        Sentry.withScope(scope => {
+          if (res.paradbErrorTags) {
+            scope.setTags(res.paradbErrorTags);
+          }
+          Sentry.captureEvent(event);
+        });
+      }
+    });
+    next();
   });
 
   const apiRouter = createApiRouter(envVars.mapsDir);
@@ -82,6 +109,19 @@ async function main(envVars: EnvVars) {
     res.redirect('/');
   });
 
+  app.use(Sentry.Handlers.errorHandler({
+    shouldHandleError: err => {
+      // Handle raw errors
+      if (!err.statusCode) {
+        return true;
+      }
+      if (typeof err.statusCode === 'number' && err.statusCode >= 400) {
+        return true;
+      }
+      return false;
+    }
+  }));
+
   app.listen(port, () => {
     console.log(`Listening on ${port}`);
   });
@@ -91,6 +131,7 @@ const envVars = setupEnvVars();
 
 Sentry.init({
   dsn: envVars.sentryDsn,
+  environment: envVars.sentryEnvironment,
 });
 
 try {

@@ -26,7 +26,20 @@ export const xssi = (req: Request, res: Response, next: () => void) => {
   next();
 };
 
-export function error<P, T extends ApiError & P>(res: Response<T, any>, statusCode: number, message: string, additionalProps: P): Response<T, any> {
+export function error<P, T extends ApiError & P>(
+    res: Response<T, any>,
+    statusCode: number,
+    message: string,
+    additionalProps: P,
+    internalTags?: Record<string, string> & { message: string },
+): Response<T, any> {
   const err = { success: false, statusCode, errorMessage: message, ...additionalProps } as T;
+  (res as any).paradbError = new Error(internalTags?.message || message);
+  if (internalTags) {
+    const _internalTags: Omit<typeof internalTags, 'message'> & { message?: string } = internalTags;
+    delete _internalTags.message;
+    (res as any).paradbErrorTags = _internalTags;
+  }
+
   return res.status(statusCode).json(err);
 }
