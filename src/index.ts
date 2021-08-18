@@ -56,7 +56,7 @@ async function main(envVars: EnvVars) {
 
   app.use(cookieParser());
   app.use(express.json({
-    limit: '50mb',
+    limit: '100mb',
   }));
   app.use(session({
     secret: 'catsaregreat',
