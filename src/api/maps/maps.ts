@@ -1,16 +1,15 @@
 import { error, guardAuth } from 'api/helpers';
-import { serializationDeps } from 'base/serialization_deps';
 import { createMap, getMap, listMaps } from 'db/maps/maps_repo';
 import { Response, Router } from 'express';
 import {
   deserializeSubmitMapRequest,
-  deserializeUserSession,
   serializeApiError,
   serializeFindMapsResponse,
   serializeGetMapResponse,
   serializeSubmitMapError,
   serializeSubmitMapResponse,
 } from 'paradb-api-schema';
+import { getUserSession } from 'session/session';
 
 export function createMapsRouter(mapsDir: string) {
   const mapsRouter = Router({ strict: true });
@@ -27,10 +26,10 @@ export function createMapsRouter(mapsDir: string) {
         internalTags: { message: result.errors[0].type },
       });
     }
-    return res.send(serializeFindMapsResponse(serializationDeps, {
+    return res.send(Buffer.from(serializeFindMapsResponse({
       success: true,
       maps: result.value,
-    }));
+    })));
   });
 
   mapsRouter.get('/:mapId', async (req, res: Response<Buffer, {}>) => {
@@ -46,15 +45,18 @@ export function createMapsRouter(mapsDir: string) {
         internalTags: { message: result.errors[0].type },
       });
     }
-    return res.send(serializeGetMapResponse(serializationDeps, {
+    return res.send(Buffer.from(serializeGetMapResponse({
       success: true,
       map: result.value,
-    }));
+    })));
   });
 
   mapsRouter.post('/submit', guardAuth, async (req, res: Response<Buffer, {}>) => {
-    const user = deserializeUserSession(serializationDeps, req.user);
-    const submitMapReq = deserializeSubmitMapRequest(serializationDeps, req.body);
+    const user = getUserSession(req, res);
+    if (!user) {
+      return;
+    }
+    const submitMapReq = deserializeSubmitMapRequest(req.body);
     const result = await createMap(mapsDir, {
       uploader: user.id,
       mapFile: submitMapReq.mapData,
@@ -74,10 +76,10 @@ export function createMapsRouter(mapsDir: string) {
         internalTags: { message: result.errors[0].type },
       });
     }
-    return res.send(serializeSubmitMapResponse(serializationDeps, {
+    return res.send(Buffer.from(serializeSubmitMapResponse({
       success: true,
       id: result.value.id,
-    }));
+    })));
   });
 
   return mapsRouter;

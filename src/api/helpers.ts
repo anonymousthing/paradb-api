@@ -1,14 +1,11 @@
-import { serializationDeps } from 'base/serialization_deps';
 import { Request, Response } from 'express';
-import { ApiError, serializeApiError } from 'paradb-api-schema';
+import { ApiError } from 'paradb-api-schema';
+import { getUserSession } from 'session/session';
 
 export const guardAuth = (req: Request, res: Response, next: () => void) => {
-  if (!req.isAuthenticated()) {
-    return res.send(serializeApiError(serializationDeps, {
-      success: false,
-      statusCode: 403,
-      errorMessage: 'Unauthorized',
-    }));
+  const user = getUserSession(req, res);
+  if (!user) {
+    return;
   }
   next();
 };
@@ -16,7 +13,7 @@ export const guardAuth = (req: Request, res: Response, next: () => void) => {
 export function error<P, T extends ApiError & P>(opts: {
   res: Response<Buffer, any>,
   statusCode: number,
-  errorSerializer(b: typeof serializationDeps, o: T): Buffer,
+  errorSerializer(o: T): Uint8Array,
   errorBody: P,
   message: string,
   internalTags?: Record<string, string> & { message: string },
@@ -45,5 +42,5 @@ export function error<P, T extends ApiError & P>(opts: {
     (res as any).paradbErrorTags = _internalTags;
   }
 
-  return res.status(statusCode).send(errorSerializer(serializationDeps, err));
+  return res.status(statusCode).send(Buffer.from(errorSerializer(err)));
 }

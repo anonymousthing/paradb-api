@@ -10,15 +10,26 @@ import * as unzipper from 'unzipper';
 import * as db from 'zapatos/db';
 
 export const enum ListMapError {
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
-};
+  UNKNOWN_DB_ERROR = 'unknown_db_error'
+}
 export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
   try {
     const maps = await db.select('maps', db.all, {
       lateral: {
-        complexities: db.select('complexities', { map_id: db.parent('id') }, { columns: ['complexity', 'complexity_name'] }),
+        complexities: db.select('complexities', { map_id: db.parent('id') }, {
+          columns: ['complexity', 'complexity_name'],
+        }),
       },
-      columns: ['id', 'submission_date', 'title', 'artist', 'author', 'uploader', 'description', 'album_art'],
+      columns: [
+        'id',
+        'submission_date',
+        'title',
+        'artist',
+        'author',
+        'uploader',
+        'description',
+        'album_art',
+      ],
       order: {
         by: 'title',
         direction: 'ASC',
@@ -37,15 +48,26 @@ export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
 }
 
 export const enum GetMapError {
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
-};
+  UNKNOWN_DB_ERROR = 'unknown_db_error'
+}
 export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
   try {
     const map = await db.selectExactlyOne('maps', { id }, {
       lateral: {
-        complexities: db.select('complexities', { map_id: db.parent('id') }, { columns: ['complexity', 'complexity_name'] }),
+        complexities: db.select('complexities', { map_id: db.parent('id') }, {
+          columns: ['complexity', 'complexity_name'],
+        }),
       },
-      columns: ['id', 'submission_date', 'title', 'artist', 'author', 'uploader', 'description', 'album_art'],
+      columns: [
+        'id',
+        'submission_date',
+        'title',
+        'artist',
+        'author',
+        'uploader',
+        'description',
+        'album_art',
+      ],
     }).run(pool);
     return {
       success: true,
@@ -57,18 +79,21 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
       errors: [{ type: GetMapError.UNKNOWN_DB_ERROR }],
     };
   }
-};
+}
 
 type CreateMapOpts = {
   uploader: string,
-  // base64 encoded zip file of the map
-  mapFile: string,
+  // zip file of the map
+  mapFile: ArrayBuffer,
 };
 export const enum CreateMapError {
   TOO_MANY_ID_GEN_ATTEMPTS = 'too_many_id_gen_attempts',
   UNKNOWN_DB_ERROR = 'unknown_db_error',
-};
-export async function createMap(mapsDir: string, opts: CreateMapOpts): PromisedResult<PDMap, CreateMapError | ValidateMapError | ValidateMapComplexityError> {
+}
+export async function createMap(
+    mapsDir: string,
+    opts: CreateMapOpts,
+): PromisedResult<PDMap, CreateMapError | ValidateMapError | ValidateMapComplexityError> {
   const id = await generateId(IdDomain.MAPS, async (id) => (await getMap(id)).success);
   if (id == null) {
     return {
@@ -90,21 +115,29 @@ export async function createMap(mapsDir: string, opts: CreateMapOpts): PromisedR
 
   const now = new Date();
   try {
-    const insertedMap = await db.insert('maps', snakeCaseKeys({
-      id,
-      submissionDate: now,
-      title: map.title,
-      artist: map.artist,
-      author: map.author || null,
-      uploader: opts.uploader,
-      albumArt: map.albumArt || null,
-      description: map.description || null,
-    })).run(pool);
-    const insertedComplexities = await db.insert('complexities', map.complexities.map(c => snakeCaseKeys({
-      mapId: id,
-      complexity: c.complexity,
-      complexityName: c.complexityName || null,
-    }))).run(pool);
+    const insertedMap = await db.insert(
+        'maps',
+        snakeCaseKeys({
+          id,
+          submissionDate: now,
+          title: map.title,
+          artist: map.artist,
+          author: map.author || null,
+          uploader: opts.uploader,
+          albumArt: map.albumArt || null,
+          description: map.description || null,
+        }),
+    ).run(pool);
+    const insertedComplexities = await db.insert(
+        'complexities',
+        map.complexities.map(c =>
+            snakeCaseKeys({
+              mapId: id,
+              complexity: c.complexity,
+              complexityName: c.complexityName || null,
+            }),
+        ),
+    ).run(pool);
     return {
       success: true,
       value: camelCaseKeys({
@@ -120,14 +153,23 @@ export async function createMap(mapsDir: string, opts: CreateMapOpts): PromisedR
   }
 }
 
-type RawMap = Pick<PDMap, 'title' | 'artist' | 'author' | 'albumArt' | 'description' | 'complexities'> & { path: string };
+type RawMap =
+    & Pick<PDMap, 'title' | 'artist' | 'author' | 'albumArt' | 'description' | 'complexities'>
+    & { path: string };
 export const enum ValidateMapError {
   MISMATCHED_COMPLEXITY_METADATA = 'mismatched_complexity_metadata',
   NO_DATA = 'no_data',
   MISSING_ALBUM_ART = 'missing_album_art',
-};
-async function storeFile(opts: { id: string, mapsDir: string, mapFile: string }): PromisedResult<RawMap, ValidateMapError | ValidateMapComplexityError> {
-  const buffer = Buffer.from(opts.mapFile, 'base64');
+}
+async function storeFile(opts: {
+  id: string,
+  mapsDir: string,
+  mapFile: ArrayBuffer,
+}): PromisedResult<
+    RawMap,
+    ValidateMapError | ValidateMapComplexityError
+> {
+  const buffer = Buffer.from(opts.mapFile);
   const map = await unzipper.Open.buffer(buffer);
   if (map.files.length === 1 && map.files[0].type === 'Directory') {
     const dirBuffer = await map.files[0].buffer();
@@ -137,14 +179,17 @@ async function storeFile(opts: { id: string, mapsDir: string, mapFile: string })
   return handleMapFiles({ ...opts, buffer, mapFiles: map.files });
 }
 
-async function handleMapFiles(opts: { buffer: Buffer, mapFiles: unzipper.File[], id: string, mapsDir: string, mapFile: string }): PromisedResult<RawMap, ValidateMapError | ValidateMapComplexityError> {
-  const complexityResults = await Promise.all(
-    opts.mapFiles
+async function handleMapFiles(opts: {
+  buffer: Buffer,
+  mapFiles: unzipper.File[],
+  id: string,
+  mapsDir: string,
+}): PromisedResult<RawMap, ValidateMapError | ValidateMapComplexityError> {
+  const complexityResults = await Promise.all(opts.mapFiles
       .filter(f => f.path.endsWith('.rlrr'))
-      .map(f => f.buffer().then(b => validateComplexity(path.basename(f.path), b)))
-  );
+      .map(f => f.buffer().then(b => validateComplexity(path.basename(f.path), b))));
   if (complexityResults.length === 0) {
-    return { success: false, errors: [{ type: ValidateMapError.NO_DATA }]};
+    return { success: false, errors: [{ type: ValidateMapError.NO_DATA }] };
   }
   const firstError = complexityResults.find(m => m.success === false);
   if (firstError && firstError.success === false) {
@@ -161,7 +206,10 @@ async function handleMapFiles(opts: { buffer: Buffer, mapFiles: unzipper.File[],
         continue;
       }
       if (value !== validComplexityResults[0].value[key as keyof RawMapComplexity]) {
-        return { success: false, errors: [{ type: ValidateMapError.MISMATCHED_COMPLEXITY_METADATA }]};
+        return {
+          success: false,
+          errors: [{ type: ValidateMapError.MISMATCHED_COMPLEXITY_METADATA }],
+        };
       }
     }
   }
@@ -172,7 +220,7 @@ async function handleMapFiles(opts: { buffer: Buffer, mapFiles: unzipper.File[],
       .map(fn => opts.mapFiles.find(f => path.basename(f.path) === fn));
 
   if (albumArtFiles.some(a => a == null)) {
-    return { success: false, errors: [{ type: ValidateMapError.MISSING_ALBUM_ART }]};
+    return { success: false, errors: [{ type: ValidateMapError.MISSING_ALBUM_ART }] };
   }
 
   // Write it to the maps directory
@@ -212,16 +260,21 @@ async function handleMapFiles(opts: { buffer: Buffer, mapFiles: unzipper.File[],
   };
 }
 
-type RawMapComplexity = Pick<PDMap, 'title' | 'artist' | 'author' | 'albumArt' | 'description'> & { complexity: number };
+type RawMapComplexity = Pick<PDMap, 'title' | 'artist' | 'author' | 'albumArt' | 'description'> & {
+  complexity: number,
+};
 export const enum ValidateMapComplexityError {
   INVALID_FORMAT = 'invalid_format',
   MISSING_VALUES = 'missing_values',
-};
-function validateComplexity(filename: string, mapBuffer: Buffer): Result<RawMapComplexity, ValidateMapComplexityError> {
+}
+function validateComplexity(
+    filename: string,
+    mapBuffer: Buffer,
+): Result<RawMapComplexity, ValidateMapComplexityError> {
   const map = JSON.parse(mapBuffer.toString());
   const metadata = map.recordingMetadata;
   if (!metadata) {
-    return { success: false, errors: [{ type: ValidateMapComplexityError.INVALID_FORMAT }]};
+    return { success: false, errors: [{ type: ValidateMapComplexityError.INVALID_FORMAT }] };
   }
   const requiredFields = {
     title: metadata.title,
@@ -230,10 +283,13 @@ function validateComplexity(filename: string, mapBuffer: Buffer): Result<RawMapC
   };
   for (const [key, value] of Object.entries(requiredFields)) {
     if (value == null) {
-      return { success: false, errors: [{
-        type: ValidateMapComplexityError.MISSING_VALUES,
-        message: `Property ${key} was missing a value`,
-      }]};
+      return {
+        success: false,
+        errors: [{
+          type: ValidateMapComplexityError.MISSING_VALUES,
+          message: `Property ${key} was missing a value`,
+        }],
+      };
     }
   }
   if (requiredFields.complexity === 1) {

@@ -1,7 +1,12 @@
-import { serializationDeps } from 'base/serialization_deps';
 import { validatePassword } from 'crypto/crypto';
 import { getUser, User } from 'db/users/users_repo';
-import { deserializeUserSession, serializeUserSession, UserSession } from 'paradb-api-schema';
+import { Request, Response } from 'express';
+import {
+  deserializeUserSession,
+  serializeApiError,
+  serializeUserSession,
+  UserSession,
+} from 'paradb-api-schema';
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 
@@ -22,16 +27,16 @@ export function installSession() {
 
   // Passport session persistence
   passport.serializeUser((user, done) => {
-    const serialized = serializeUserSession(serializationDeps, user as UserSession);
+    const serialized = serializeUserSession(user as UserSession);
     done(null, { _paradbSession: serialized });
   });
   passport.deserializeUser((session, done) => {
     const { _paradbSession: data } = session as any;
     let deserialized: UserSession;
     if (Buffer.isBuffer(data)) {
-      deserialized = deserializeUserSession(serializationDeps, data);
+      deserialized = deserializeUserSession(data);
     } else if (data.data != null) {
-      deserialized = deserializeUserSession(serializationDeps, new Uint8Array(data.data));
+      deserialized = deserializeUserSession(new Uint8Array(data.data));
     } else {
       throw new Error();
     }
@@ -42,4 +47,25 @@ export function installSession() {
 export function createSessionFromUser(user: User): UserSession {
   const { id, username, accountStatus, email } = user;
   return { id, username, accountStatus, email };
+}
+
+export function getUserSession(req: Request, res: Response): UserSession | undefined {
+  const send403 = () => {
+    res.send(serializeApiError({
+      success: false,
+      statusCode: 403,
+      errorMessage: 'Unauthorized',
+    }));
+  };
+  if (!req.isAuthenticated()) {
+    send403();
+    return;
+  }
+  const user = req.user;
+  if (!user) {
+    send403();
+    return;
+  }
+  // TODO: validate against schema
+  return user as UserSession;
 }

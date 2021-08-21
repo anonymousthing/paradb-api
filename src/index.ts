@@ -17,10 +17,10 @@ type EnvVars = {
   mapsDir: string,
   sentryDsn: string,
   sentryEnvironment: string,
-}
+};
 
 function setupEnvVars() {
-  const _envVars: { [K in keyof EnvVars]: EnvVars[K] | undefined} = {
+  const _envVars: { [K in keyof EnvVars]: EnvVars[K] | undefined } = {
     pgUser: process.env.PGUSER,
     pgPassword: process.env.PGPASSWORD,
     mapsDir: process.env.MAPS_DIR,
@@ -56,12 +56,12 @@ async function main(envVars: EnvVars) {
 
   app.use(cookieParser());
   app.use(express.raw({
-    type: 'application/bson',
+    type: 'application/octet-stream',
     limit: '150mb',
   }));
   app.use(session({
     secret: 'catsaregreat',
-  }))
+  }));
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -75,7 +75,8 @@ async function main(envVars: EnvVars) {
 
   app.use(async (req, _res, next) => {
     _res.on('finish', async () => {
-      const res: typeof _res & { paradbError?: Error, paradbErrorTags?: Record<string, string> } = _res;
+      const res: typeof _res & { paradbError?: Error, paradbErrorTags?: Record<string, string> } =
+          _res;
       if (res.paradbError && res.statusCode >= 400) {
         const event = await sentryBackend.eventFromException(res.paradbError);
         Sentry.withScope(scope => {
@@ -120,7 +121,7 @@ async function main(envVars: EnvVars) {
         return true;
       }
       return false;
-    }
+    },
   }));
 
   app.listen(port, () => {

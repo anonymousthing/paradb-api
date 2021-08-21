@@ -1,6 +1,5 @@
 import { error, guardAuth } from 'api/helpers';
 import { UnreachableError } from 'base/conditions';
-import { serializationDeps } from 'base/serialization_deps';
 import { createUser, CreateUserError, User } from 'db/users/users_repo';
 import { Request, Response, Router } from 'express';
 import {
@@ -11,30 +10,24 @@ import {
   serializeGetUserResponse,
   serializeSignupResponse,
   SignupError,
-  UserSession,
 } from 'paradb-api-schema';
 import passport from 'passport';
-import { createSessionFromUser } from 'session/session';
+import { createSessionFromUser, getUserSession } from 'session/session';
 
 const usersRouter = Router({ strict: true });
 
-function getUserSession(req: Request): UserSession {
-  const user = req.user;
-  if (!user) {
-    throw new Error();
-  }
-  return user as UserSession;
-}
-
 usersRouter.get('/me', guardAuth, (req, res) => {
-  const user = getUserSession(req);
-  res.send(serializeGetUserResponse(serializationDeps, { success: true, user }));
+  const user = getUserSession(req, res);
+  if (!user) {
+    return;
+  }
+  res.send(serializeGetUserResponse({ success: true, user }));
 });
 
 usersRouter.post('/login', async (req, res: Response<Buffer, {}>) => {
   try {
     await authenticate(req, res);
-    return res.send(serializeApiSuccess(serializationDeps, { success: true }));
+    return res.send(Buffer.from(serializeApiSuccess({ success: true })));
   } catch (e) {
     return error({
       res,
@@ -47,7 +40,7 @@ usersRouter.post('/login', async (req, res: Response<Buffer, {}>) => {
 });
 
 usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
-  const signupRequest = deserializeSignupRequest(serializationDeps, req.body);
+  const signupRequest = deserializeSignupRequest(req.body);
   const { username, email, password } = signupRequest;
   const result = await createUser({ username, email, password });
   if (!result.success) {
@@ -109,7 +102,7 @@ usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
       message: 'Could not login as newly created user.',
     });
   }
-  return res.send(serializeApiSuccess(serializationDeps, { success: true }));
+  return res.send(Buffer.from(serializeApiSuccess({ success: true })));
 });
 
 async function authenticate(req: Request, resp: Response): Promise<void> {
