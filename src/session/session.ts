@@ -31,16 +31,22 @@ export function installSession() {
     done(null, { _paradbSession: serialized });
   });
   passport.deserializeUser((session, done) => {
-    const { _paradbSession: data } = session as any;
-    let deserialized: UserSession;
-    if (Buffer.isBuffer(data)) {
-      deserialized = deserializeUserSession(data);
-    } else if (data.data != null) {
-      deserialized = deserializeUserSession(new Uint8Array(data.data));
-    } else {
-      throw new Error();
+    try {
+      const { _paradbSession: data } = session as any;
+      let deserialized: UserSession;
+      if (Buffer.isBuffer(data)) {
+        deserialized = deserializeUserSession(data);
+      } else if (data.data != null) {
+        deserialized = deserializeUserSession(new Uint8Array(data.data));
+      } else {
+        throw new Error();
+      }
+      done(null, deserialized);
+    } catch (e) {
+      // Couldn't deserialize session from the cookie -- might be an older format.
+      // Default to logging them out.
+      done(null, null);
     }
-    done(null, deserialized);
   });
 }
 
