@@ -107,14 +107,14 @@ usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
 
 async function authenticate(req: Request, resp: Response): Promise<void> {
   return new Promise((resolve, reject) => {
-    passport.authenticate('local', (err, user, info) => {
+    passport.authenticate('local_binary', (err, user, info) => {
       // TODO: differentiate between 500 and invalid credentials
       if (err || !user) {
-        reject(err);
+        return reject(err);
       }
       req.login(user, err => {
         if (err) {
-          reject(err);
+          return reject(err);
         }
         resolve();
       });
