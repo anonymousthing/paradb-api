@@ -1,39 +1,43 @@
+import { serializationDeps } from 'base/serialization_deps';
 import { Request, Response } from 'express';
-import { ApiError } from 'paradb-api-schema';
+import { ApiError, serializeApiError } from 'paradb-api-schema';
 
 export const guardAuth = (req: Request, res: Response, next: () => void) => {
   if (!req.isAuthenticated()) {
-    return res.json({ success: false, message: 'Unauthorized' });
+    return res.send(serializeApiError(serializationDeps, {
+      success: false,
+      statusCode: 403,
+      errorMessage: 'Unauthorized',
+    }));
   }
   next();
 };
 
-const XSSI_PREFIX = '\'"])}while(1);</x>//';
-export const xssi = (req: Request, res: Response, next: () => void) => {
-  const originalSend = res.send;
-  res.json = function (data) {
-    const strData = typeof data === 'object'
-        ? XSSI_PREFIX + JSON.stringify(data)
-        : typeof data === 'string'
-            ? XSSI_PREFIX + data
-            : data;
-    return originalSend.call(res, strData);
-  }
-  res.send = function (data) {
-    const strData = typeof data === 'object' ? XSSI_PREFIX + JSON.stringify(data) : data;
-    return originalSend.call(res, strData);
-  };
-  next();
-};
+export function error<P, T extends ApiError & P>(opts: {
+  res: Response<Buffer, any>,
+  statusCode: number,
+  errorSerializer(b: typeof serializationDeps, o: T): Buffer,
+  errorBody: P,
+  message: string,
+  internalTags?: Record<string, string> & { message: string },
+}): Response<Buffer, any> {
+  const {
+    res,
+    errorSerializer,
+    errorBody,
+    statusCode,
+    message,
+    internalTags,
+  } = opts;
 
-export function error<P, T extends ApiError & P>(
-    res: Response<T, any>,
-    statusCode: number,
-    message: string,
-    additionalProps: P,
-    internalTags?: Record<string, string> & { message: string },
-): Response<T, any> {
-  const err = { success: false, statusCode, errorMessage: message, ...additionalProps } as T;
+  const err = {
+    success: false,
+    statusCode,
+    errorMessage: message,
+    ...errorBody,
+  } as T;
+
+  // Attach error message and tags for Sentry
   (res as any).paradbError = new Error(internalTags?.message || message);
   if (internalTags) {
     const _internalTags: Omit<typeof internalTags, 'message'> & { message?: string } = internalTags;
@@ -41,5 +45,5 @@ export function error<P, T extends ApiError & P>(
     (res as any).paradbErrorTags = _internalTags;
   }
 
-  return res.status(statusCode).json(err);
+  return res.status(statusCode).send(errorSerializer(serializationDeps, err));
 }

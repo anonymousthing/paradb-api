@@ -1,4 +1,3 @@
-
 import { PromisedResult, ResultError } from 'base/result';
 import { createPassword } from 'crypto/crypto';
 import { CamelCase, camelCaseKeys, fromBytea, snakeCaseKeys, toBytea } from 'db/helpers';
@@ -6,16 +5,15 @@ import { generateId, IdDomain } from 'db/id_gen';
 import pool from 'db/pool';
 import * as db from 'zapatos/db';
 import { users } from 'zapatos/schema';
-import zxcvbn from 'zxcvbn';
 
 export type User = Omit<CamelCase<users.JSONSelectable>, 'password'> & { password: string };
 export const enum AccountStatus {
-  ACTIVE = 'A',
-};
+  ACTIVE = 'A'
+}
 export const enum EmailStatus {
   UNVERIFIED = 'U',
   VERIFIED = 'V',
-};
+}
 
 type GetUserOpts = GetUserByUsernameOpts | GetUserByIdOpts | GetUserByEmailOpts;
 type GetUserByUsernameOpts = {
@@ -33,7 +31,7 @@ type GetUserByEmailOpts = {
 export const enum GetUserError {
   NO_USER = 'no_user',
   UNKNOWN_DB_ERROR = 'unknown_db_error',
-};
+}
 export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserError> {
   let user: users.JSONSelectable | undefined;
   try {
@@ -83,17 +81,17 @@ export const enum CreateUserError {
   INSECURE_PASSWORD = 'insecure_password',
   USERNAME_TAKEN = 'username_taken',
   EMAIL_TAKEN = 'email_taken',
-};
+}
 export async function createUser(opts: CreateUserOpts): PromisedResult<User, CreateUserError> {
   const errorResult: ResultError<CreateUserError> = { success: false, errors: [] };
   // Validate password requirements
-  const passwordStrengthResult = zxcvbn(opts.password, [opts.email, opts.username]);
-  if (passwordStrengthResult.feedback.warning || passwordStrengthResult.score < 2) {
-    errorResult.errors.push({
-      type: CreateUserError.INSECURE_PASSWORD,
-      message: passwordStrengthResult.feedback.warning,
-    });
-  }
+  // const passwordStrengthResult = zxcvbn(opts.password, [opts.email, opts.username]);
+  // if (passwordStrengthResult.feedback.warning || passwordStrengthResult.score < 2) {
+  //   errorResult.errors.push({
+  //     type: CreateUserError.INSECURE_PASSWORD,
+  //     message: passwordStrengthResult.feedback.warning,
+  //   });
+  // }
 
   // Test username and email existence
   try {
@@ -113,7 +111,10 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
     return errorResult;
   }
 
-  const id = await generateId(IdDomain.USERS, async (id) => (await getUser({ by: 'id', id })).success);
+  const id = await generateId(
+      IdDomain.USERS,
+      async (id) => (await getUser({ by: 'id', id })).success,
+  );
   if (id == null) {
     return {
       success: false,
@@ -126,16 +127,19 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
 
   const now = new Date();
   try {
-    const inserted = await db.insert('users', snakeCaseKeys({
-      id,
-      creationDate: now,
-      accountStatus: AccountStatus.ACTIVE,
-      username: opts.username,
-      email: opts.email,
-      emailStatus: EmailStatus.UNVERIFIED,
-      password: passwordBuffer,
-      passwordUpdated: now,
-    })).run(pool);
+    const inserted = await db.insert(
+        'users',
+        snakeCaseKeys({
+          id,
+          creationDate: now,
+          accountStatus: AccountStatus.ACTIVE,
+          username: opts.username,
+          email: opts.email,
+          emailStatus: EmailStatus.UNVERIFIED,
+          password: passwordBuffer,
+          passwordUpdated: now,
+        }),
+    ).run(pool);
     return {
       success: true,
       value: camelCaseKeys(inserted),

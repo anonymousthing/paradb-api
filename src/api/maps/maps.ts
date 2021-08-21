@@ -1,52 +1,83 @@
-import { error, guardAuth, xssi } from 'api/helpers';
+import { error, guardAuth } from 'api/helpers';
+import { serializationDeps } from 'base/serialization_deps';
 import { createMap, getMap, listMaps } from 'db/maps/maps_repo';
 import { Response, Router } from 'express';
 import {
   deserializeSubmitMapRequest,
   deserializeUserSession,
-  FindMapsResponse,
-  GetMapResponse,
-  SubmitMapResponse,
+  serializeApiError,
+  serializeFindMapsResponse,
+  serializeGetMapResponse,
+  serializeSubmitMapError,
+  serializeSubmitMapResponse,
 } from 'paradb-api-schema';
 
 export function createMapsRouter(mapsDir: string) {
   const mapsRouter = Router({ strict: true });
 
-  mapsRouter.get('/', xssi, async (req, res: Response<FindMapsResponse, {}>) => {
+  mapsRouter.get('/', async (req, res: Response<Buffer, {}>) => {
     const result = await listMaps();
     if (!result.success) {
-      return error(res, 500, 'Could not retrieve map', {}, { message: result.errors[0].type });
+      return error({
+        res,
+        statusCode: 500,
+        errorSerializer: serializeApiError,
+        errorBody: {},
+        message: 'Could not retrieve map',
+        internalTags: { message: result.errors[0].type },
+      });
     }
-    return (res as Response<FindMapsResponse, {}>).json({ success: true, maps: result.value });
+    return res.send(serializeFindMapsResponse(serializationDeps, {
+      success: true,
+      maps: result.value,
+    }));
   });
 
-  mapsRouter.get('/:mapId', xssi, async (req, res: Response<GetMapResponse, {}>) => {
+  mapsRouter.get('/:mapId', async (req, res: Response<Buffer, {}>) => {
     const id = req.params.mapId;
     const result = await getMap(id);
     if (result.success === false) {
-      return error(res, 500, 'Could not retrieve maps', {}, { message: result.errors[0].type });
+      return error({
+        res,
+        errorSerializer: serializeApiError,
+        errorBody: {},
+        statusCode: 500,
+        message: 'Could not retrieve maps',
+        internalTags: { message: result.errors[0].type },
+      });
     }
-    return res.json({ success: true, map: result.value });
+    return res.send(serializeGetMapResponse(serializationDeps, {
+      success: true,
+      map: result.value,
+    }));
   });
 
-  mapsRouter.post('/submit', xssi, guardAuth, async (req, res: Response<SubmitMapResponse, {}>) => {
-    const user = deserializeUserSession(req.user);
-    const submitMapReq = deserializeSubmitMapRequest(req.body);
+  mapsRouter.post('/submit', guardAuth, async (req, res: Response<Buffer, {}>) => {
+    const user = deserializeUserSession(serializationDeps, req.user);
+    const submitMapReq = deserializeSubmitMapRequest(serializationDeps, req.body);
     const result = await createMap(mapsDir, {
       uploader: user.id,
       mapFile: submitMapReq.mapData,
     });
     if (!result.success) {
       // TODO: granular errors
-      return error(
+      return error({
         res,
-        500,
-        'Could not submit map',
-        { title: undefined, artist: undefined, downloadLink: undefined },
-        { message: result.errors[0].type },
-      );
+        statusCode: 500,
+        errorSerializer: serializeSubmitMapError,
+        errorBody: {
+          title: undefined,
+          artist: undefined,
+          downloadLink: undefined,
+        },
+        message: 'Could not submit map',
+        internalTags: { message: result.errors[0].type },
+      });
     }
-    return res.json({ success: true, id: result.value.id });
+    return res.send(serializeSubmitMapResponse(serializationDeps, {
+      success: true,
+      id: result.value.id,
+    }));
   });
 
   return mapsRouter;

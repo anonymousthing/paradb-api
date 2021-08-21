@@ -55,7 +55,8 @@ async function main(envVars: EnvVars) {
   app.use(Sentry.Handlers.requestHandler());
 
   app.use(cookieParser());
-  app.use(express.json({
+  app.use(express.raw({
+    type: 'application/bson',
     limit: '150mb',
   }));
   app.use(session({

@@ -1,34 +1,53 @@
-import { error, guardAuth, xssi } from 'api/helpers';
+import { error, guardAuth } from 'api/helpers';
 import { UnreachableError } from 'base/conditions';
+import { serializationDeps } from 'base/serialization_deps';
 import { createUser, CreateUserError, User } from 'db/users/users_repo';
 import { Request, Response, Router } from 'express';
 import {
   ApiError,
   deserializeSignupRequest,
-  LoginResponse,
+  serializeApiError,
+  serializeApiSuccess,
+  serializeGetUserResponse,
+  serializeSignupResponse,
   SignupError,
-  SignupResponse,
+  UserSession,
 } from 'paradb-api-schema';
 import passport from 'passport';
 import { createSessionFromUser } from 'session/session';
 
 const usersRouter = Router({ strict: true });
 
-usersRouter.get('/me', xssi, guardAuth, (req, res) => {
-  res.json({ success: true, user: req.user });
+function getUserSession(req: Request): UserSession {
+  const user = req.user;
+  if (!user) {
+    throw new Error();
+  }
+  return user as UserSession;
+}
+
+usersRouter.get('/me', guardAuth, (req, res) => {
+  const user = getUserSession(req);
+  res.send(serializeGetUserResponse(serializationDeps, { success: true, user }));
 });
 
-usersRouter.post('/login', xssi, async (req, res: Response<LoginResponse, {}>) => {
+usersRouter.post('/login', async (req, res: Response<Buffer, {}>) => {
   try {
     await authenticate(req, res);
-    return res.json({ success: true });
+    return res.send(serializeApiSuccess(serializationDeps, { success: true }));
   } catch (e) {
-    return error(res, 401, 'Invalid credentials', {});
+    return error({
+      res,
+      statusCode: 401,
+      errorSerializer: serializeApiError,
+      errorBody: {},
+      message: 'Invalid credentials',
+    });
   }
 });
 
-usersRouter.post('/signup', xssi, async (req, res: Response<SignupResponse, {}>) => {
-  const signupRequest = deserializeSignupRequest(req.body);
+usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
+  const signupRequest = deserializeSignupRequest(serializationDeps, req.body);
   const { username, email, password } = signupRequest;
   const result = await createUser({ username, email, password });
   if (!result.success) {
@@ -66,14 +85,31 @@ usersRouter.post('/signup', xssi, async (req, res: Response<SignupResponse, {}>)
           throw new UnreachableError(error.type);
       }
     }
-    return error(res, statusCode, errorMessage, signupError, { message: result.errors[0].type });
+    return error({
+      res,
+      statusCode,
+      errorSerializer: serializeSignupResponse,
+      errorBody: signupError,
+      message: errorMessage,
+      internalTags: { message: result.errors[0].type },
+    });
   }
   try {
     await establishSession(req, result.value);
   } catch (e) {
-    return error(res, 500, 'Could not login as newly created user.', { username: undefined, email: undefined, password: undefined });
+    return error({
+      res,
+      statusCode: 500,
+      errorSerializer: serializeSignupResponse,
+      errorBody: {
+        username: undefined,
+        email: undefined,
+        password: undefined,
+      },
+      message: 'Could not login as newly created user.',
+    });
   }
-  return res.json({ success: true });
+  return res.send(serializeApiSuccess(serializationDeps, { success: true }));
 });
 
 async function authenticate(req: Request, resp: Response): Promise<void> {
