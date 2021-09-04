@@ -5,6 +5,7 @@ import { generateId, IdDomain } from 'db/id_gen';
 import pool from 'db/pool';
 import * as db from 'zapatos/db';
 import { users } from 'zapatos/schema';
+import zxcvbn from 'zxcvbn';
 
 export type User = Omit<CamelCase<users.JSONSelectable>, 'password'> & { password: string };
 export const enum AccountStatus {
@@ -37,7 +38,7 @@ export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserEr
   try {
     if (opts.by === 'username') {
       user = await db.selectOne('users', {
-        username: opts.username,
+        username: db.sql`lower(${db.self}) = ${db.param(opts.username.toLowerCase())}`,
       }).run(pool);
     } else if (opts.by === 'id') {
       user = await db.selectOne('users', {
@@ -45,7 +46,7 @@ export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserEr
       }).run(pool);
     } else {
       user = await db.selectOne('users', {
-        email: opts.email,
+        email: db.sql`lower(${db.self}) = ${db.param(opts.email.toLowerCase())}`,
       }).run(pool);
     }
   } catch (e) {
@@ -85,13 +86,13 @@ export const enum CreateUserError {
 export async function createUser(opts: CreateUserOpts): PromisedResult<User, CreateUserError> {
   const errorResult: ResultError<CreateUserError> = { success: false, errors: [] };
   // Validate password requirements
-  // const passwordStrengthResult = zxcvbn(opts.password, [opts.email, opts.username]);
-  // if (passwordStrengthResult.feedback.warning || passwordStrengthResult.score < 2) {
-  //   errorResult.errors.push({
-  //     type: CreateUserError.INSECURE_PASSWORD,
-  //     message: passwordStrengthResult.feedback.warning,
-  //   });
-  // }
+  const passwordStrengthResult = zxcvbn(opts.password, [opts.email, opts.username]);
+  if (passwordStrengthResult.feedback.warning || passwordStrengthResult.score < 2) {
+    errorResult.errors.push({
+      type: CreateUserError.INSECURE_PASSWORD,
+      message: passwordStrengthResult.feedback.warning,
+    });
+  }
 
   // Test username and email existence
   try {

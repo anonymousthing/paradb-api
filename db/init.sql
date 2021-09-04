@@ -25,3 +25,5 @@ CREATE TABLE users (
   password bytea not null,
   password_updated timestamp not null
 );
+CREATE INDEX idx_users_username ON users (lower(username));
+CREATE INDEX idx_users_email ON users (lower(email));
