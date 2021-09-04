@@ -1,9 +1,10 @@
 import { error, guardAuth } from 'api/helpers';
-import { createMap, getMap, listMaps } from 'db/maps/maps_repo';
-import { Response, Router } from 'express';
+import { createMap, deleteMap, getMap, GetMapError, listMaps } from 'db/maps/maps_repo';
+import { Response, response, Router } from 'express';
 import {
   deserializeSubmitMapRequest,
   serializeApiError,
+  serializeDeleteMapResponse,
   serializeFindMapsResponse,
   serializeGetMapResponse,
   serializeSubmitMapError,
@@ -36,18 +37,63 @@ export function createMapsRouter(mapsDir: string) {
     const id = req.params.mapId;
     const result = await getMap(id);
     if (result.success === false) {
+      const isMissing = result.errors.some(e => e.type === GetMapError.MISSING_MAP);
       return error({
         res,
         errorSerializer: serializeApiError,
         errorBody: {},
-        statusCode: 500,
-        message: 'Could not retrieve maps',
+        statusCode: isMissing ? 404 : 500,
+        message: isMissing ? 'Map not found' : 'Could not retrieve map',
         internalTags: { message: result.errors[0].type },
       });
     }
     return res.send(Buffer.from(serializeGetMapResponse({
       success: true,
       map: result.value,
+    })));
+  });
+
+  mapsRouter.post('/:mapId/delete', guardAuth, async (req, res: Response<Buffer, {}>) => {
+    const id = req.params.mapId;
+    const getResult = await getMap(id);
+    if (getResult.success === false) {
+      const isMissing = getResult.errors.some(e => e.type === GetMapError.MISSING_MAP);
+      return error({
+        res,
+        errorSerializer: serializeApiError,
+        errorBody: {},
+        statusCode: isMissing ? 404 : 500,
+        message: isMissing ? 'Map not found' : 'Could not delete map',
+        internalTags: { message: getResult.errors[0].type },
+      });
+    }
+    const user = getUserSession(req, res);
+    if (!user) {
+      return;
+    }
+    if (user.id !== getResult.value.uploader) {
+      return error({
+        res,
+        errorSerializer: serializeApiError,
+        errorBody: {},
+        statusCode: 403,
+        message: 'Only the map uploader can delete their own maps',
+      });
+    }
+
+    const deleteResult = await deleteMap(id);
+    if (deleteResult.success === false) {
+      return error({
+        res,
+        errorSerializer: serializeApiError,
+        errorBody: {},
+        statusCode: 500,
+        message: 'Could not delete map',
+        internalTags: { message: deleteResult.errors[0].type },
+      });
+    }
+    return res.send(Buffer.from(serializeDeleteMapResponse({
+      success: true,
     })));
   });
 

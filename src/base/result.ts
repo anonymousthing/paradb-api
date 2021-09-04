@@ -7,7 +7,7 @@ export type ResultError<E extends string> = {
      * An error message to be displayed to the user.
      */
     message?: string,
-  }[]
+  }[],
 };
 export type Result<T, E extends string> = ResultSuccess<T> | ResultError<E>;
 

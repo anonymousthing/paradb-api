@@ -48,11 +48,12 @@ export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
 }
 
 export const enum GetMapError {
-  UNKNOWN_DB_ERROR = 'unknown_db_error'
+  MISSING_MAP = 'missing_map',
+  UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
 export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
   try {
-    const map = await db.selectExactlyOne('maps', { id }, {
+    const map = await db.selectOne('maps', { id }, {
       lateral: {
         complexities: db.select('complexities', { map_id: db.parent('id') }, {
           columns: ['complexity', 'complexity_name'],
@@ -69,6 +70,9 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
         'album_art',
       ],
     }).run(pool);
+    if (map == null) {
+      return { success: false, errors: [{ type: GetMapError.MISSING_MAP }] };
+    }
     return {
       success: true,
       value: camelCaseKeys(map) as PDMap,
@@ -77,6 +81,29 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
     return {
       success: false,
       errors: [{ type: GetMapError.UNKNOWN_DB_ERROR }],
+    };
+  }
+}
+
+export const enum DeleteMapError {
+  MISSING_MAP = 'missing_map',
+  UNKNOWN_DB_ERROR = 'unknown_db_error',
+}
+export async function deleteMap(id: string): PromisedResult<undefined, DeleteMapError> {
+  try {
+    await db.serializable(pool, client =>
+        Promise.all([
+          db.deletes('complexities', { map_id: id }).run(client),
+          db.deletes('maps', { id }).run(client),
+        ]));
+    return {
+      success: true,
+      value: undefined,
+    };
+  } catch (e) {
+    return {
+      success: false,
+      errors: [{ type: DeleteMapError.UNKNOWN_DB_ERROR }],
     };
   }
 }

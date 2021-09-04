@@ -45,7 +45,11 @@ function setupEnvVars() {
 
 async function main(envVars: EnvVars) {
   // Test DB
-  await pool.connect();
+  try {
+    await pool.connect();
+  } catch (e) {
+    throw new Error('Could not connect to database, is it running?');
+  }
 
   const port = 8080;
   const app = express();
