@@ -10,6 +10,7 @@ import * as fs from 'fs/promises';
 import passport from 'passport';
 import path from 'path';
 import { installSession } from 'session/session';
+import { Request, Response } from 'express';
 
 type EnvVars = {
   pgUser: string,
@@ -56,8 +57,6 @@ async function main(envVars: EnvVars) {
 
   installSession();
 
-  app.use(Sentry.Handlers.requestHandler());
-
   app.use(cookieParser());
   app.use(express.raw({
     type: 'application/octet-stream',
@@ -72,22 +71,16 @@ async function main(envVars: EnvVars) {
   app.get('/favicon.ico', (req, res) => {
     res.status(404).end();
   });
-
-  const sentryBackend = new Sentry.NodeBackend({
-    attachStacktrace: true,
-  });
-
   app.use(async (req, _res, next) => {
     _res.on('finish', async () => {
       const res: typeof _res & { paradbError?: Error, paradbErrorTags?: Record<string, string> } =
           _res;
       if (res.paradbError && res.statusCode >= 400) {
-        const event = await sentryBackend.eventFromException(res.paradbError);
         Sentry.withScope(scope => {
           if (res.paradbErrorTags) {
             scope.setTags(res.paradbErrorTags);
           }
-          Sentry.captureEvent(event);
+          Sentry.captureException(res.paradbError)
         });
       }
     });
@@ -115,18 +108,12 @@ async function main(envVars: EnvVars) {
     res.redirect('/');
   });
 
-  app.use(Sentry.Handlers.errorHandler({
-    shouldHandleError: err => {
-      // Handle raw errors
-      if (!err.statusCode) {
-        return true;
-      }
-      if (typeof err.statusCode === 'number' && err.statusCode >= 400) {
-        return true;
-      }
-      return false;
-    },
-  }));
+  app.use((error: any, req: Request, res: Response, next: () => void) => {
+    if (error.statusCode == null || (typeof error.statusCode === 'number' && error.statusCode >= 400)) {
+      Sentry.captureException(error);
+    }
+    res.status(500).send({ error: 'internal server error' });
+  });
 
   app.listen(port, () => {
     console.log(`Listening on ${port}`);
