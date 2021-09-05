@@ -45,7 +45,7 @@ export function error<P, T extends ApiError & P>(opts: {
   return res.status(statusCode).send(Buffer.from(errorSerializer(err)));
 }
 
-export const handleErrors = async(next: (e?: Error) => void, f: () => Promise<any>) => {
+export const handleAsyncErrors = async (next: (e?: Error) => void, f: () => Promise<any>) => {
   try {
     await f();
   } catch (e) {
