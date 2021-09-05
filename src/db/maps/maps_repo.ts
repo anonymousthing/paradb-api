@@ -180,11 +180,11 @@ export async function createMap(
   }
 }
 
-type RawMap =
-    & Pick<PDMap, 'title' | 'artist' | 'author' | 'albumArt' | 'description' | 'complexities'>
-    & { path: string };
+type RawMap = Pick<PDMap, 'title' | 'artist' | 'author' | 'description' | 'complexities'>;
 export const enum ValidateMapError {
   MISMATCHED_COMPLEXITY_METADATA = 'mismatched_complexity_metadata',
+  MISSING_SUBFOLDER = 'missing_subfolder',
+  INCORRECT_FOLDER_NAME = 'incorrect_folder_name',
   NO_DATA = 'no_data',
   MISSING_ALBUM_ART = 'missing_album_art',
 }
@@ -193,25 +193,64 @@ async function storeFile(opts: {
   mapsDir: string,
   mapFile: ArrayBuffer,
 }): PromisedResult<
-    RawMap,
+    RawMap & { path: string } & Pick<PDMap, 'albumArt'>,
     ValidateMapError | ValidateMapComplexityError
 > {
   const buffer = Buffer.from(opts.mapFile);
   const map = await unzipper.Open.buffer(buffer);
-  if (map.files.length === 1 && map.files[0].type === 'Directory') {
-    const dirBuffer = await map.files[0].buffer();
-    const dir = await unzipper.Open.buffer(dirBuffer);
-    return handleMapFiles({ ...opts, buffer, mapFiles: dir.files });
+  // A submitted map must have exactly one directory in it
+  const dir = map.files.filter(f => f.type === 'Directory');
+  if (dir.length !== 1) {
+    return {
+      success: false,
+      errors: [{ type: ValidateMapError.MISSING_SUBFOLDER }],
+    };
   }
-  return handleMapFiles({ ...opts, buffer, mapFiles: map.files });
+  const files = map.files.filter(f => f.path.startsWith(dir[0].path));
+  const validateResult = await validateMapFiles({ ...opts, mapFiles: files });
+  if (!validateResult.success) {
+    return validateResult;
+  }
+  // The map directory needs to be the same as the song title.
+  // TODO: remove this check once Paradiddle supports arbitrary folder names
+  if (validateResult.value.title !== path.basename(map.files[0].path)) {
+    return {
+      success: false,
+      errors: [{ type: ValidateMapError.INCORRECT_FOLDER_NAME }],
+    };
+  }
+  const { title, artist, author, description, complexities, albumArtFiles } = validateResult.value;
+  const { mapFilePath, albumArt } = await writeMapFiles({
+    id: opts.id,
+    mapsDir: opts.mapsDir,
+    buffer,
+    albumArtFiles,
+  });
+  return {
+    success: true,
+    value: {
+      title,
+      artist,
+      author,
+      description,
+      complexities,
+      path: mapFilePath,
+      albumArt,
+    },
+  };
 }
 
-async function handleMapFiles(opts: {
-  buffer: Buffer,
+function allExists<T>(a: (T | undefined)[]): a is T[] {
+  return a.every(t => t != null);
+}
+async function validateMapFiles(opts: {
   mapFiles: unzipper.File[],
   id: string,
   mapsDir: string,
-}): PromisedResult<RawMap, ValidateMapError | ValidateMapComplexityError> {
+}): PromisedResult<
+    RawMap & { albumArtFiles: unzipper.File[] },
+    ValidateMapError | ValidateMapComplexityError
+> {
   const complexityResults = await Promise.all(opts.mapFiles
       .filter(f => f.path.endsWith('.rlrr'))
       .map(f => f.buffer().then(b => validateComplexity(path.basename(f.path), b))));
@@ -246,24 +285,9 @@ async function handleMapFiles(opts: {
       .filter((s): s is string => s != null)
       .map(fn => opts.mapFiles.find(f => path.basename(f.path) === fn));
 
-  if (albumArtFiles.some(a => a == null)) {
+  if (!allExists(albumArtFiles)) {
     return { success: false, errors: [{ type: ValidateMapError.MISSING_ALBUM_ART }] };
   }
-
-  // Write it to the maps directory
-  const mapFilename = opts.id + '.zip';
-  const filepath = path.resolve(opts.mapsDir, mapFilename);
-  await fs.writeFile(filepath, opts.buffer);
-
-  // For now, write all of the album art files to the album art directory.
-  // TODO: display all of the album arts in the FE, e.g. in a carousel, or when selecting a complexity
-  const albumArtFolderPath = path.resolve(opts.mapsDir, opts.id);
-  await fs.mkdir(albumArtFolderPath);
-  await Promise.all(albumArtFiles.map(a => {
-    const albumArt = checkExists(a, 'albumArt');
-    const albumArtPath = path.resolve(albumArtFolderPath, path.basename(albumArt.path));
-    return albumArt.buffer().then(b => fs.writeFile(albumArtPath, b));
-  }));
 
   return {
     success: true,
@@ -278,12 +302,38 @@ async function handleMapFiles(opts: {
         // undefined for now, and use the FE fallback for Easy/Normal/Hard/Expert on render.
         complexityName: undefined,
       })).sort((a, b) => a.complexity - b.complexity),
-      // All file paths persisted in the DB are relative to mapsDir
-      albumArt: albumArtFiles.length > 0
-          ? path.basename(albumArtFiles[0]!.path)
-          : undefined,
-      path: mapFilename,
+      albumArtFiles,
     },
+  };
+}
+
+async function writeMapFiles(opts: {
+  id: string,
+  mapsDir: string,
+  buffer: Buffer,
+  albumArtFiles: unzipper.File[],
+}) {
+  // Write it to the maps directory
+  const mapFilename = opts.id + '.zip';
+  const filepath = path.resolve(opts.mapsDir, mapFilename);
+  await fs.writeFile(filepath, opts.buffer);
+
+  // For now, write all of the album art files to the album art directory.
+  // TODO: display all of the album arts in the FE, e.g. in a carousel, or when selecting a complexity
+  const albumArtFolderPath = path.resolve(opts.mapsDir, opts.id);
+  await fs.mkdir(albumArtFolderPath);
+  await Promise.all(opts.albumArtFiles.map(a => {
+    const albumArt = checkExists(a, 'albumArt');
+    const albumArtPath = path.resolve(albumArtFolderPath, path.basename(albumArt.path));
+    return albumArt.buffer().then(b => fs.writeFile(albumArtPath, b));
+  }));
+
+  return {
+    // All file paths persisted in the DB are relative to mapsDir
+    mapFilePath: mapFilename,
+    albumArt: opts.albumArtFiles.length > 0
+        ? path.basename(opts.albumArtFiles[0]!.path)
+        : undefined,
   };
 }
 
