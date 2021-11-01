@@ -87,7 +87,7 @@ export function installSession() {
       let deserialized: UserSession;
       if (Buffer.isBuffer(data)) {
         deserialized = deserializeUserSession(data);
-      } else if (data.data != null) {
+      } else if (data?.data != null) {
         deserialized = deserializeUserSession(new Uint8Array(data.data));
       } else {
         throw new Error();
