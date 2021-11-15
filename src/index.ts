@@ -97,6 +97,7 @@ async function main(envVars: EnvVars) {
   // Always serve the React SPA for all non-static and non-api routes.
   app.get([
     '/',
+    '/instructions',
     '/login',
     '/signup',
     '/map/*',
