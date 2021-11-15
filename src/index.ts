@@ -68,9 +68,6 @@ async function main(envVars: EnvVars) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  app.get('/favicon.ico', (req, res) => {
-    res.status(404).end();
-  });
   app.use(async (req, _res, next) => {
     _res.on('finish', async () => {
       const res: typeof _res & { paradbError?: Error, paradbErrorTags?: Record<string, string> } =
@@ -92,6 +89,7 @@ async function main(envVars: EnvVars) {
 
   // Serve static assets
   app.use('/static', express.static(path.join(__dirname, '../fe/')));
+  app.use('/favicon.png', (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')));
   // TODO: allowlist to only images and zip files
   app.use('/static/map_data/', express.static(envVars.mapsDir));
   // Always serve the React SPA for all non-static and non-api routes.
