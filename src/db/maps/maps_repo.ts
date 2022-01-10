@@ -198,28 +198,33 @@ async function storeFile(opts: {
 > {
   const buffer = Buffer.from(opts.mapFile);
   const map = await unzipper.Open.buffer(buffer);
-  // A submitted map must have exactly one directory in it
-  const dir = map.files.filter(f => f.type === 'Directory');
-  if (dir.length !== 1) {
+  // A submitted map must have exactly one directory in it, and all of the files must be under
+  // that directory.
+  const files = map.files.filter(f => f.type === 'File');
+  const mapNameMatch = files[0].path.match(/(.+?)\//);
+  let mapName = mapNameMatch ? mapNameMatch[1] : null;
+  if (mapName?.startsWith('/')) {
+    mapName = mapName.substring(1);
+  }
+  if (mapName == null || !files.every(f => f.path.startsWith(mapName + '/'))) {
     return {
       success: false,
       errors: [{ type: ValidateMapError.MISSING_SUBFOLDER }],
     };
   }
-  const files = map.files.filter(f => f.path.startsWith(dir[0].path));
-  const validateResult = await validateMapFiles({ ...opts, mapFiles: files });
-  if (!validateResult.success) {
-    return validateResult;
+  const validatedResult = await validateMapFiles({ ...opts, mapFiles: files });
+  if (!validatedResult.success) {
+    return validatedResult;
   }
   // The map directory needs to be the same as the song title.
   // TODO: remove this check once Paradiddle supports arbitrary folder names
-  if (validateResult.value.title !== path.basename(map.files[0].path)) {
+  if (validatedResult.value.title !== mapName) {
     return {
       success: false,
       errors: [{ type: ValidateMapError.INCORRECT_FOLDER_NAME }],
     };
   }
-  const { title, artist, author, description, complexities, albumArtFiles } = validateResult.value;
+  const { title, artist, author, description, complexities, albumArtFiles } = validatedResult.value;
   const { mapFilePath, albumArt } = await writeMapFiles({
     id: opts.id,
     mapsDir: opts.mapsDir,
