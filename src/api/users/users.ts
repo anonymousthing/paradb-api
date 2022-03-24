@@ -1,12 +1,15 @@
 import { error, guardAuth } from 'api/helpers';
 import { UnreachableError } from 'base/conditions';
-import { createUser, CreateUserError, User } from 'db/users/users_repo';
+import { validatePassword } from 'crypto/crypto';
+import { changePassword, ChangePasswordError, createUser, CreateUserError, getUser, User } from 'db/users/users_repo';
 import { Request, Response, Router } from 'express';
 import {
   ApiError,
+  deserializeChangePasswordRequest,
   deserializeSignupRequest,
   serializeApiError,
   serializeApiSuccess,
+  serializeChangePasswordResponse,
   serializeGetUserResponse,
   serializeSignupResponse,
   SignupError,
@@ -101,6 +104,59 @@ usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
       },
       message: 'Could not login as newly created user.',
     });
+  }
+  return res.send(Buffer.from(serializeApiSuccess({ success: true })));
+});
+
+usersRouter.post('/changePassword', async (req, res: Response<Buffer, {}>) => {
+  const changeReq = deserializeChangePasswordRequest(req.body);
+  const { id, oldPassword, newPassword } = changeReq;
+
+  const userResult = await getUser({ by: 'id', id });
+  if (!userResult.success) {
+    return error({
+      res,
+      statusCode: 403,
+      errorSerializer: serializeChangePasswordResponse,
+      errorBody: { oldPassword: undefined, newPassword: undefined },
+      message: 'Invalid user ID',
+    });
+  }
+  const user = userResult.value;
+
+  if (!(await validatePassword(oldPassword, user.password))) {
+    return error({
+      res,
+      statusCode: 403,
+      errorSerializer: serializeChangePasswordResponse,
+      errorBody: { oldPassword: 'Incorrect current password.', newPassword: undefined },
+      message: '',
+    });
+  }
+
+  const changePasswordResult = await changePassword({ newPassword, user });
+  if (!changePasswordResult.success) {
+    const insecurePasswordError = changePasswordResult.errors.find(e => e.type === ChangePasswordError.INSECURE_PASSWORD);
+    if (insecurePasswordError) {
+      return error({
+        res,
+        statusCode: 400,
+        errorSerializer: serializeChangePasswordResponse,
+        errorBody: {
+          oldPassword: undefined,
+          newPassword: insecurePasswordError.message || 'New password is too insecure.',
+        },
+        message: '',
+      });
+    } else {
+      return error({
+        res,
+        statusCode: 500,
+        errorSerializer: serializeChangePasswordResponse,
+        errorBody: { oldPassword: undefined, newPassword: undefined },
+        message: 'Unknown DB error',
+      });
+    }
   }
   return res.send(Buffer.from(serializeApiSuccess({ success: true })));
 });
