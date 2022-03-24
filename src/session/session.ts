@@ -12,15 +12,15 @@ import passport from 'passport';
 
 type VerifiedFn = (err: Error | null, user: any, info?: any) => void;
 type VerifyFn =
-    | ((req: Request, username: string, password: string, verified: VerifiedFn) => void)
-    | ((username: string, password: string, verified: VerifiedFn) => void);
+  | ((req: Request, username: string, password: string, verified: VerifiedFn) => void)
+  | ((username: string, password: string, verified: VerifiedFn) => void);
 
 class LocalBinarySerializedStrategy extends passport.Strategy {
   readonly name = 'local_binary';
 
   constructor(
-      private readonly options: { passReqToCallback?: boolean } = {},
-      private readonly verify?: VerifyFn,
+    private readonly options: { passReqToCallback?: boolean } = {},
+    private readonly verify?: VerifyFn,
   ) {
     super();
     if (!verify) {
@@ -32,8 +32,8 @@ class LocalBinarySerializedStrategy extends passport.Strategy {
     const { username, password } = deserializeLoginRequest(req.body);
     if (!username || !password) {
       return this.fail(
-          { message: options?.badRequestMessage || 'Missing credentials' } as any,
-          400,
+        { message: options?.badRequestMessage || 'Missing credentials' } as any,
+        400,
       );
     }
     const verified: VerifiedFn = (err, user, info) => {
@@ -59,14 +59,16 @@ class LocalBinarySerializedStrategy extends passport.Strategy {
 }
 
 export function installSession() {
-  passport.use(new LocalBinarySerializedStrategy(
+  passport.use(
+    new LocalBinarySerializedStrategy(
       {},
       async (username: string, password: string, done: VerifiedFn) => {
         const result = await getUser({ by: 'username', username });
         if (!result.success) {
           return done(null, false, { message: 'invalid-credentials' });
         }
-        const user = result.value;
+        const user = result
+          .value;
         const isValid = await validatePassword(password, user.password);
         if (!isValid) {
           return done(null, false, { message: 'invalid-credentials' });
@@ -74,7 +76,8 @@ export function installSession() {
         // Session object is persisted into req.user
         return done(null, createSessionFromUser(user));
       },
-  ));
+    ),
+  );
 
   // Passport session persistence
   passport.serializeUser((user, done) => {
@@ -108,11 +111,7 @@ export function createSessionFromUser(user: User): UserSession {
 
 export function getUserSession(req: Request, res: Response): UserSession | undefined {
   const send403 = () => {
-    res.send(serializeApiError({
-      success: false,
-      statusCode: 403,
-      errorMessage: 'Unauthorized',
-    }));
+    res.send(serializeApiError({ success: false, statusCode: 403, errorMessage: 'Unauthorized' }));
   };
   if (!req.isAuthenticated()) {
     send403();

@@ -27,10 +27,7 @@ export function createMapsRouter(mapsDir: string) {
         internalTags: { message: result.errors[0].type },
       });
     }
-    return res.send(Buffer.from(serializeFindMapsResponse({
-      success: true,
-      maps: result.value,
-    })));
+    return res.send(Buffer.from(serializeFindMapsResponse({ success: true, maps: result.value })));
   });
 
   mapsRouter.get('/:mapId', async (req, res: Response<Buffer, {}>) => {
@@ -47,10 +44,7 @@ export function createMapsRouter(mapsDir: string) {
         internalTags: { message: result.errors[0].type },
       });
     }
-    return res.send(Buffer.from(serializeGetMapResponse({
-      success: true,
-      map: result.value,
-    })));
+    return res.send(Buffer.from(serializeGetMapResponse({ success: true, map: result.value })));
   });
 
   mapsRouter.post('/:mapId/delete', guardAuth, async (req, res: Response<Buffer, {}>) => {
@@ -92,9 +86,7 @@ export function createMapsRouter(mapsDir: string) {
         internalTags: { message: deleteResult.errors[0].type },
       });
     }
-    return res.send(Buffer.from(serializeDeleteMapResponse({
-      success: true,
-    })));
+    return res.send(Buffer.from(serializeDeleteMapResponse({ success: true })));
   });
 
   mapsRouter.post('/submit', guardAuth, async (req, res: Response<Buffer, {}>, next) => {
@@ -104,29 +96,21 @@ export function createMapsRouter(mapsDir: string) {
         return;
       }
       const submitMapReq = deserializeSubmitMapRequest(req.body);
-      const result = await createMap(mapsDir, {
-        uploader: user.id,
-        mapFile: submitMapReq.mapData,
-      });
+      const result = await createMap(mapsDir, { uploader: user.id, mapFile: submitMapReq.mapData });
       if (!result.success) {
         // TODO: granular errors
         return error({
           res,
           statusCode: 500,
           errorSerializer: serializeSubmitMapError,
-          errorBody: {
-            title: undefined,
-            artist: undefined,
-            downloadLink: undefined,
-          },
+          errorBody: { title: undefined, artist: undefined, downloadLink: undefined },
           message: 'Could not submit map',
           internalTags: { message: result.errors[0].type },
         });
       }
-      return res.send(Buffer.from(serializeSubmitMapResponse({
-        success: true,
-        id: result.value.id,
-      })));
+      return res.send(
+        Buffer.from(serializeSubmitMapResponse({ success: true, id: result.value.id })),
+      );
     });
   });
 

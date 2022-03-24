@@ -10,29 +10,19 @@ export const guardAuth = (req: Request, res: Response, next: () => void) => {
   next();
 };
 
-export function error<P, T extends ApiError & P>(opts: {
-  res: Response<Buffer, any>,
-  statusCode: number,
-  errorSerializer(o: T): Uint8Array,
-  errorBody: P,
-  message: string,
-  internalTags?: Record<string, string> & { message: string },
-}): Response<Buffer, any> {
-  const {
-    res,
-    errorSerializer,
-    errorBody,
-    statusCode,
-    message,
-    internalTags,
-  } = opts;
+export function error<P, T extends ApiError & P>(
+  opts: {
+    res: Response<Buffer, any>,
+    statusCode: number,
+    errorSerializer(o: T): Uint8Array,
+    errorBody: P,
+    message: string,
+    internalTags?: Record<string, string> & { message: string },
+  },
+): Response<Buffer, any> {
+  const { res, errorSerializer, errorBody, statusCode, message, internalTags } = opts;
 
-  const err = {
-    success: false,
-    statusCode,
-    errorMessage: message,
-    ...errorBody,
-  } as T;
+  const err = { success: false, statusCode, errorMessage: message, ...errorBody } as T;
 
   // Attach error message and tags for Sentry
   (res as any).paradbError = new Error(internalTags?.message || message);
@@ -51,4 +41,4 @@ export const handleAsyncErrors = async (next: (e?: Error) => void, f: () => Prom
   } catch (e) {
     next(e);
   }
-}
+};

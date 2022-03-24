@@ -1,7 +1,14 @@
 import { error, guardAuth } from 'api/helpers';
 import { UnreachableError } from 'base/conditions';
 import { validatePassword } from 'crypto/crypto';
-import { changePassword, ChangePasswordError, createUser, CreateUserError, getUser, User } from 'db/users/users_repo';
+import {
+  changePassword,
+  ChangePasswordError,
+  createUser,
+  CreateUserError,
+  getUser,
+  User,
+} from 'db/users/users_repo';
 import { Request, Response, Router } from 'express';
 import {
   ApiError,
@@ -97,11 +104,7 @@ usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
       res,
       statusCode: 500,
       errorSerializer: serializeSignupResponse,
-      errorBody: {
-        username: undefined,
-        email: undefined,
-        password: undefined,
-      },
+      errorBody: { username: undefined, email: undefined, password: undefined },
       message: 'Could not login as newly created user.',
     });
   }
@@ -136,7 +139,9 @@ usersRouter.post('/changePassword', async (req, res: Response<Buffer, {}>) => {
 
   const changePasswordResult = await changePassword({ newPassword, user });
   if (!changePasswordResult.success) {
-    const insecurePasswordError = changePasswordResult.errors.find(e => e.type === ChangePasswordError.INSECURE_PASSWORD);
+    const insecurePasswordError = changePasswordResult.errors.find(e =>
+      e.type === ChangePasswordError.INSECURE_PASSWORD
+    );
     if (insecurePasswordError) {
       return error({
         res,

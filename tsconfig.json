@@ -27,6 +27,6 @@
     "files": true
   },
   "include": [
-    "src",
+    "src"
   ]
 }
