@@ -9,7 +9,7 @@ import zxcvbn from 'zxcvbn';
 
 export type User = Omit<CamelCase<users.JSONSelectable>, 'password'> & { password: string };
 export const enum AccountStatus {
-  ACTIVE = 'A'
+  ACTIVE = 'A',
 }
 export const enum EmailStatus {
   UNVERIFIED = 'U',
@@ -17,18 +17,9 @@ export const enum EmailStatus {
 }
 
 type GetUserOpts = GetUserByUsernameOpts | GetUserByIdOpts | GetUserByEmailOpts;
-type GetUserByUsernameOpts = {
-  by: 'username',
-  username: string,
-};
-type GetUserByIdOpts = {
-  by: 'id',
-  id: string,
-};
-type GetUserByEmailOpts = {
-  by: 'email',
-  email: string,
-};
+type GetUserByUsernameOpts = { by: 'username', username: string };
+type GetUserByIdOpts = { by: 'id', id: string };
+type GetUserByEmailOpts = { by: 'email', email: string };
 export const enum GetUserError {
   NO_USER = 'no_user',
   UNKNOWN_DB_ERROR = 'unknown_db_error',
@@ -37,38 +28,28 @@ export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserEr
   let user: users.JSONSelectable | undefined;
   try {
     if (opts.by === 'username') {
-      user = await db.selectOne('users', {
-        username: db.sql`lower(${db.self}) = ${db.param(opts.username.toLowerCase())}`,
-      }).run(pool);
+      user = await db
+        .selectOne('users', {
+          username: db.sql`lower(${db.self}) = ${db.param(opts.username.toLowerCase())}`,
+        })
+        .run(pool);
     } else if (opts.by === 'id') {
-      user = await db.selectOne('users', {
-        id: opts.id,
-      }).run(pool);
+      user = await db.selectOne('users', { id: opts.id }).run(pool);
     } else {
-      user = await db.selectOne('users', {
-        email: db.sql`lower(${db.self}) = ${db.param(opts.email.toLowerCase())}`,
-      }).run(pool);
+      user = await db
+        .selectOne('users', {
+          email: db.sql`lower(${db.self}) = ${db.param(opts.email.toLowerCase())}`,
+        })
+        .run(pool);
     }
   } catch (e) {
-    return {
-      success: false,
-      errors: [{ type: GetUserError.UNKNOWN_DB_ERROR }],
-    };
+    return { success: false, errors: [{ type: GetUserError.UNKNOWN_DB_ERROR }] };
   }
 
   if (user != null) {
-    return {
-      success: true,
-      value: {
-        ...camelCaseKeys(user),
-        password: fromBytea(user.password),
-      },
-    };
+    return { success: true, value: { ...camelCaseKeys(user), password: fromBytea(user.password) } };
   }
-  return {
-    success: false,
-    errors: [{ type: GetUserError.NO_USER }],
-  };
+  return { success: false, errors: [{ type: GetUserError.NO_USER }] };
 }
 
 function isPasswordWeak(password: string, email: string, username: string) {
@@ -79,11 +60,7 @@ function isPasswordWeak(password: string, email: string, username: string) {
   }
 }
 
-type CreateUserOpts = {
-  username: string,
-  email: string,
-  password: string,
-};
+type CreateUserOpts = { username: string, email: string, password: string };
 export const enum CreateUserError {
   TOO_MANY_ID_GEN_ATTEMPTS = 'too_many_id_gen_attempts',
   UNKNOWN_DB_ERROR = 'unknown_db_error',
@@ -98,10 +75,7 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
   // Note that we don't early exit here with the weak password error, as we want to show all possible
   // errors to the user at once (e.g. errors with their username or email as well).
   if (feedback) {
-    errorResult.errors.push({
-      type: CreateUserError.INSECURE_PASSWORD,
-      message: feedback,
-    });
+    errorResult.errors.push({ type: CreateUserError.INSECURE_PASSWORD, message: feedback });
   }
 
   // Test username and email existence
@@ -123,14 +97,11 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
   }
 
   const id = await generateId(
-      IdDomain.USERS,
-      async (id) => (await getUser({ by: 'id', id })).success,
+    IdDomain.USERS,
+    async id => (await getUser({ by: 'id', id })).success,
   );
   if (id == null) {
-    return {
-      success: false,
-      errors: [{ type: CreateUserError.TOO_MANY_ID_GEN_ATTEMPTS }],
-    };
+    return { success: false, errors: [{ type: CreateUserError.TOO_MANY_ID_GEN_ATTEMPTS }] };
   }
 
   const password = await createPassword(opts.password);
@@ -138,7 +109,8 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
 
   const now = new Date();
   try {
-    const inserted = await db.insert(
+    const inserted = await db
+      .insert(
         'users',
         snakeCaseKeys({
           id,
@@ -150,28 +122,22 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
           password: passwordBuffer,
           passwordUpdated: now,
         }),
-    ).run(pool);
-    return {
-      success: true,
-      value: camelCaseKeys(inserted),
-    };
+      )
+      .run(pool);
+    return { success: true, value: camelCaseKeys(inserted) };
   } catch (e) {
-    return {
-      success: false,
-      errors: [{ type: CreateUserError.UNKNOWN_DB_ERROR }],
-    };
+    return { success: false, errors: [{ type: CreateUserError.UNKNOWN_DB_ERROR }] };
   }
 }
 
-type ChangePasswordOpts = {
-  user: User,
-  newPassword: string,
-};
+type ChangePasswordOpts = { user: User, newPassword: string };
 export const enum ChangePasswordError {
   UNKNOWN_DB_ERROR = 'unknown_db_error',
   INSECURE_PASSWORD = 'insecure_password',
 }
-export async function changePassword(opts: ChangePasswordOpts): PromisedResult<undefined, ChangePasswordError> {
+export async function changePassword(
+  opts: ChangePasswordOpts,
+): PromisedResult<undefined, ChangePasswordError> {
   const errorResult: ResultError<ChangePasswordError> = { success: false, errors: [] };
 
   // Validate password requirements
@@ -179,7 +145,7 @@ export async function changePassword(opts: ChangePasswordOpts): PromisedResult<u
   if (feedback) {
     return {
       success: false,
-      errors: [{ type: ChangePasswordError.INSECURE_PASSWORD, message: feedback }]
+      errors: [{ type: ChangePasswordError.INSECURE_PASSWORD, message: feedback }],
     };
   }
 
@@ -192,20 +158,14 @@ export async function changePassword(opts: ChangePasswordOpts): PromisedResult<u
 
   const now = new Date();
   try {
-    await db.update(
-      'users',
-      snakeCaseKeys({ password: passwordBuffer, passwordUpdated: now }),
-      { id: opts.user.id },
-    ).run(pool);
+    await db
+      .update('users', snakeCaseKeys({ password: passwordBuffer, passwordUpdated: now }), {
+        id: opts.user.id,
+      })
+      .run(pool);
 
-    return {
-      success: true,
-      value: undefined,
-    };
+    return { success: true, value: undefined };
   } catch (e) {
-    return {
-      success: false,
-      errors: [{ type: ChangePasswordError.UNKNOWN_DB_ERROR}],
-    }
+    return { success: false, errors: [{ type: ChangePasswordError.UNKNOWN_DB_ERROR }] };
   }
 }
