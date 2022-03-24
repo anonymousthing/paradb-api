@@ -71,6 +71,14 @@ export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserEr
   };
 }
 
+function isPasswordWeak(password: string, email: string, username: string) {
+  // Validate password requirements
+  const passwordStrengthResult = zxcvbn(password, [email, username]);
+  if (passwordStrengthResult.feedback.warning || passwordStrengthResult.score < 2) {
+    return passwordStrengthResult.feedback.warning;
+  }
+}
+
 type CreateUserOpts = {
   username: string,
   email: string,
@@ -86,11 +94,13 @@ export const enum CreateUserError {
 export async function createUser(opts: CreateUserOpts): PromisedResult<User, CreateUserError> {
   const errorResult: ResultError<CreateUserError> = { success: false, errors: [] };
   // Validate password requirements
-  const passwordStrengthResult = zxcvbn(opts.password, [opts.email, opts.username]);
-  if (passwordStrengthResult.feedback.warning || passwordStrengthResult.score < 2) {
+  const feedback = isPasswordWeak(opts.password, opts.email, opts.username);
+  // Note that we don't early exit here with the weak password error, as we want to show all possible
+  // errors to the user at once (e.g. errors with their username or email as well).
+  if (feedback) {
     errorResult.errors.push({
       type: CreateUserError.INSECURE_PASSWORD,
-      message: passwordStrengthResult.feedback.warning,
+      message: feedback,
     });
   }
 
@@ -150,5 +160,52 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
       success: false,
       errors: [{ type: CreateUserError.UNKNOWN_DB_ERROR }],
     };
+  }
+}
+
+type ChangePasswordOpts = {
+  user: User,
+  newPassword: string,
+};
+export const enum ChangePasswordError {
+  UNKNOWN_DB_ERROR = 'unknown_db_error',
+  INSECURE_PASSWORD = 'insecure_password',
+}
+export async function changePassword(opts: ChangePasswordOpts): PromisedResult<undefined, ChangePasswordError> {
+  const errorResult: ResultError<ChangePasswordError> = { success: false, errors: [] };
+
+  // Validate password requirements
+  const feedback = isPasswordWeak(opts.newPassword, opts.user.email, opts.user.username);
+  if (feedback) {
+    return {
+      success: false,
+      errors: [{ type: ChangePasswordError.INSECURE_PASSWORD, message: feedback }]
+    };
+  }
+
+  if (errorResult.errors.length) {
+    return errorResult;
+  }
+
+  const password = await createPassword(opts.newPassword);
+  const passwordBuffer = toBytea(password);
+
+  const now = new Date();
+  try {
+    await db.update(
+      'users',
+      snakeCaseKeys({ password: passwordBuffer, passwordUpdated: now }),
+      { id: opts.user.id },
+    ).run(pool);
+
+    return {
+      success: true,
+      value: undefined,
+    };
+  } catch (e) {
+    return {
+      success: false,
+      errors: [{ type: ChangePasswordError.UNKNOWN_DB_ERROR}],
+    }
   }
 }

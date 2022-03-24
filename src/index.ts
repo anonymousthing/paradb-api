@@ -97,6 +97,7 @@ async function main(envVars: EnvVars) {
     '/',
     '/instructions',
     '/login',
+    '/settings',
     '/signup',
     '/map/*',
   ], (req, res) => {
