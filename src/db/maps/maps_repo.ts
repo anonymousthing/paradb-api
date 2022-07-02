@@ -3,6 +3,8 @@ import { PromisedResult, Result, ResultSuccess } from 'base/result';
 import { camelCaseKeys, snakeCaseKeys } from 'db/helpers';
 import { generateId, IdDomain } from 'db/id_gen';
 import pool from 'db/pool';
+// @ts-ignore
+import * as encoding from 'encoding';
 import * as fs from 'fs/promises';
 import { PDMap } from 'paradb-api-schema';
 import path from 'path';
@@ -314,7 +316,12 @@ function validateComplexity(
   filename: string,
   mapBuffer: Buffer,
 ): Result<RawMapComplexity, ValidateMapComplexityError> {
-  const map = JSON.parse(mapBuffer.toString());
+  let map: any;
+  try {
+    map = parseJsonBuffer(mapBuffer);
+  } catch (e) {
+    return { success: false, errors: [{ type: ValidateMapComplexityError.INVALID_FORMAT }] };
+  }
   const metadata = map.recordingMetadata;
   if (!metadata) {
     return { success: false, errors: [{ type: ValidateMapComplexityError.INVALID_FORMAT }] };
@@ -350,4 +357,11 @@ function validateComplexity(
     albumArt: metadata.coverImagePath,
   };
   return { success: true, value: { ...requiredFields, ...optionalFields } };
+}
+
+function parseJsonBuffer(buffer: Buffer) {
+  if (buffer.indexOf('\uFEFF', 0, 'utf16le') === 0) {
+    return JSON.parse(encoding.convert(buffer, 'utf8', 'utf16le'));
+  }
+  return JSON.parse(buffer.toString());
 }
