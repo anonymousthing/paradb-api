@@ -1,6 +1,6 @@
 import { error, guardAuth, handleAsyncErrors } from 'api/helpers';
 import { createMap, deleteMap, getMap, GetMapError, listMaps } from 'db/maps/maps_repo';
-import { Response, Router } from 'express';
+import { Request, Response, Router } from 'express';
 import {
   deserializeSubmitMapRequest,
   serializeApiError,
@@ -47,7 +47,7 @@ export function createMapsRouter(mapsDir: string) {
     return res.send(Buffer.from(serializeGetMapResponse({ success: true, map: result.value })));
   });
 
-  mapsRouter.post('/:mapId/delete', guardAuth, async (req, res: Response<Buffer, {}>) => {
+  mapsRouter.post('/:mapId/delete', guardAuth, async (req: Request, res: Response<Buffer, {}>) => {
     const id = req.params.mapId;
     const getResult = await getMap(id);
     if (getResult.success === false) {
@@ -89,7 +89,7 @@ export function createMapsRouter(mapsDir: string) {
     return res.send(Buffer.from(serializeDeleteMapResponse({ success: true })));
   });
 
-  mapsRouter.post('/submit', guardAuth, async (req, res: Response<Buffer, {}>, next) => {
+  mapsRouter.post('/submit', guardAuth, async (req: Request, res: Response<Buffer, {}>, next) => {
     handleAsyncErrors(next, async () => {
       const user = getUserSession(req, res);
       if (!user) {

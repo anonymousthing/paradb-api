@@ -2,7 +2,7 @@ import { PromisedResult, ResultError } from 'base/result';
 import { createPassword } from 'crypto/crypto';
 import { CamelCase, camelCaseKeys, fromBytea, snakeCaseKeys, toBytea } from 'db/helpers';
 import { generateId, IdDomain } from 'db/id_gen';
-import pool from 'db/pool';
+import { pool } from 'db/pool';
 import * as db from 'zapatos/db';
 import { users } from 'zapatos/schema';
 import zxcvbn from 'zxcvbn';

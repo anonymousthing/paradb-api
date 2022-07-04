@@ -6,13 +6,14 @@ CREATE TABLE maps (
   author varchar(256),
   uploader varchar(256) not null,
   description text,
+  complexity int,
   album_art text
 );
 
-CREATE TABLE complexities (
+CREATE TABLE difficulties (
   map_id varchar(16) references maps (id) not null,
-  complexity int not null,
-  complexity_name varchar(256)
+  difficulty int,
+  difficulty_name varchar(256)
 );
 
 CREATE TABLE users (
