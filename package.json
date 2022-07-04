@@ -7,7 +7,8 @@
   "license": "MIT",
   "scripts": {
     "start": "nodemon src/index.ts",
-    "schema": "tools/update_schema.sh"
+    "schema": "tools/update_schema.sh",
+    "outage": "ts-node src/outage/index.ts"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.0",
