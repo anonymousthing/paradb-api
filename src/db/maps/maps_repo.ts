@@ -296,7 +296,7 @@ export async function validateMapFiles(
           // undefined for now, and look into generating a difficulty level later based on the map
           // content.
           difficulty: undefined,
-          difficultyName: path.basename(d.value.difficultyName),
+          difficultyName: d.value.difficultyName,
         })),
       albumArtFiles,
     },
