@@ -24,7 +24,7 @@ export function createMapsRouter(mapsDir: string) {
         errorSerializer: serializeApiError,
         errorBody: {},
         message: 'Could not retrieve map',
-        internalTags: { message: result.errors[0].type },
+        resultError: result,
       });
     }
     return res.send(Buffer.from(serializeFindMapsResponse({ success: true, maps: result.value })));
@@ -41,7 +41,7 @@ export function createMapsRouter(mapsDir: string) {
         errorBody: {},
         statusCode: isMissing ? 404 : 500,
         message: isMissing ? 'Map not found' : 'Could not retrieve map',
-        internalTags: { message: result.errors[0].type },
+        resultError: result,
       });
     }
     return res.send(Buffer.from(serializeGetMapResponse({ success: true, map: result.value })));
@@ -58,7 +58,7 @@ export function createMapsRouter(mapsDir: string) {
         errorBody: {},
         statusCode: isMissing ? 404 : 500,
         message: isMissing ? 'Map not found' : 'Could not delete map',
-        internalTags: { message: getResult.errors[0].type },
+        resultError: getResult,
       });
     }
     const user = getUserSession(req, res);
@@ -83,7 +83,7 @@ export function createMapsRouter(mapsDir: string) {
         errorBody: {},
         statusCode: 500,
         message: 'Could not delete map',
-        internalTags: { message: deleteResult.errors[0].type },
+        resultError: deleteResult,
       });
     }
     return res.send(Buffer.from(serializeDeleteMapResponse({ success: true })));
@@ -105,7 +105,7 @@ export function createMapsRouter(mapsDir: string) {
           errorSerializer: serializeSubmitMapError,
           errorBody: { title: undefined, artist: undefined, downloadLink: undefined },
           message: 'Could not submit map',
-          internalTags: { message: result.errors[0].type },
+          resultError: result,
         });
       }
       return res.send(

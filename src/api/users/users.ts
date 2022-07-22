@@ -74,7 +74,7 @@ usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
           break;
         case CreateUserError.INSECURE_PASSWORD:
           statusCode = 400;
-          signupError.password = error.message || 'Your password is not strong enough';
+          signupError.password = error.userMessage || 'Your password is not strong enough';
           break;
         case CreateUserError.TOO_MANY_ID_GEN_ATTEMPTS:
           statusCode = 500;
@@ -94,7 +94,7 @@ usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
       errorSerializer: serializeSignupResponse,
       errorBody: signupError,
       message: errorMessage,
-      internalTags: { message: result.errors[0].type },
+      resultError: result,
     });
   }
   try {
@@ -149,7 +149,7 @@ usersRouter.post('/changePassword', async (req, res: Response<Buffer, {}>) => {
         errorSerializer: serializeChangePasswordResponse,
         errorBody: {
           oldPassword: undefined,
-          newPassword: insecurePasswordError.message || 'New password is too insecure.',
+          newPassword: insecurePasswordError.userMessage || 'New password is too insecure.',
         },
         message: '',
       });

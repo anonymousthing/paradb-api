@@ -1,5 +1,5 @@
 import { checkExists } from 'base/conditions';
-import { PromisedResult, Result, ResultError } from 'base/result';
+import { PromisedResult, Result, ResultError, wrapError } from 'base/result';
 import { camelCaseKeys, snakeCaseKeys } from 'db/helpers';
 import { generateId, IdDomain } from 'db/id_gen';
 import { pool } from 'db/pool';
@@ -38,7 +38,7 @@ export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
       .run(pool);
     return { success: true, value: maps.map(m => camelCaseKeys(m)) as PDMap[] };
   } catch (e) {
-    return { success: false, errors: [{ type: ListMapError.UNKNOWN_DB_ERROR }] };
+    return { success: false, errors: [wrapError(e, ListMapError.UNKNOWN_DB_ERROR)] };
   }
 }
 
@@ -72,7 +72,7 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
     }
     return { success: true, value: camelCaseKeys(map) as PDMap };
   } catch (e) {
-    return { success: false, errors: [{ type: GetMapError.UNKNOWN_DB_ERROR }] };
+    return { success: false, errors: [wrapError(e, GetMapError.UNKNOWN_DB_ERROR)] };
   }
 }
 
@@ -92,7 +92,7 @@ export async function deleteMap(id: string): PromisedResult<undefined, DeleteMap
     );
     return { success: true, value: undefined };
   } catch (e) {
-    return { success: false, errors: [{ type: DeleteMapError.UNKNOWN_DB_ERROR }] };
+    return { success: false, errors: [wrapError(e, DeleteMapError.UNKNOWN_DB_ERROR)] };
   }
 }
 
@@ -156,7 +156,7 @@ export async function createMap(
       value: camelCaseKeys({ ...insertedMap, difficulties: insertedDifficulties }),
     };
   } catch (e) {
-    return { success: false, errors: [{ type: CreateMapError.UNKNOWN_DB_ERROR }] };
+    return { success: false, errors: [wrapError(e, CreateMapError.UNKNOWN_DB_ERROR)] };
   }
 }
 
@@ -266,7 +266,7 @@ export async function validateMapFiles(
           success: false,
           errors: [{
             type: ValidateMapError.MISMATCHED_DIFFICULTY_METADATA,
-            message: `mismatched '${key}': '${value}' vs '${expected}'`,
+            userMessage: `mismatched '${key}': '${value}' vs '${expected}'`,
           }],
         };
       }
@@ -363,7 +363,7 @@ function validateMapMetadata(
         success: false,
         errors: [{
           type: ValidateMapDifficultyError.MISSING_VALUES,
-          message: `Property ${key} was missing a value`,
+          userMessage: `Property ${key} was missing a value`,
         }],
       };
     }

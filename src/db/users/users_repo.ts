@@ -1,4 +1,4 @@
-import { PromisedResult, ResultError } from 'base/result';
+import { PromisedResult, ResultError, wrapError } from 'base/result';
 import { createPassword } from 'crypto/crypto';
 import { CamelCase, camelCaseKeys, fromBytea, snakeCaseKeys, toBytea } from 'db/helpers';
 import { generateId, IdDomain } from 'db/id_gen';
@@ -43,7 +43,7 @@ export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserEr
         .run(pool);
     }
   } catch (e) {
-    return { success: false, errors: [{ type: GetUserError.UNKNOWN_DB_ERROR }] };
+    return { success: false, errors: [wrapError(e, GetUserError.UNKNOWN_DB_ERROR)] };
   }
 
   if (user != null) {
@@ -75,7 +75,7 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
   // Note that we don't early exit here with the weak password error, as we want to show all possible
   // errors to the user at once (e.g. errors with their username or email as well).
   if (feedback) {
-    errorResult.errors.push({ type: CreateUserError.INSECURE_PASSWORD, message: feedback });
+    errorResult.errors.push({ type: CreateUserError.INSECURE_PASSWORD, userMessage: feedback });
   }
 
   // Test username and email existence
@@ -89,7 +89,7 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
       errorResult.errors.push({ type: CreateUserError.EMAIL_TAKEN });
     }
   } catch (e) {
-    errorResult.errors.push({ type: CreateUserError.UNKNOWN_DB_ERROR });
+    errorResult.errors.push(wrapError(e, CreateUserError.UNKNOWN_DB_ERROR));
   }
 
   if (errorResult.errors.length) {
@@ -126,7 +126,7 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
       .run(pool);
     return { success: true, value: camelCaseKeys(inserted) };
   } catch (e) {
-    return { success: false, errors: [{ type: CreateUserError.UNKNOWN_DB_ERROR }] };
+    return { success: false, errors: [wrapError(e, CreateUserError.UNKNOWN_DB_ERROR)] };
   }
 }
 
@@ -145,7 +145,7 @@ export async function changePassword(
   if (feedback) {
     return {
       success: false,
-      errors: [{ type: ChangePasswordError.INSECURE_PASSWORD, message: feedback }],
+      errors: [{ type: ChangePasswordError.INSECURE_PASSWORD, userMessage: feedback }],
     };
   }
 
@@ -166,6 +166,6 @@ export async function changePassword(
 
     return { success: true, value: undefined };
   } catch (e) {
-    return { success: false, errors: [{ type: ChangePasswordError.UNKNOWN_DB_ERROR }] };
+    return { success: false, errors: [wrapError(e, ChangePasswordError.UNKNOWN_DB_ERROR)] };
   }
 }
