@@ -1,14 +1,6 @@
 import { error, guardAuth } from 'api/helpers';
 import { UnreachableError } from 'base/conditions';
 import { validatePassword } from 'crypto/crypto';
-import {
-  changePassword,
-  ChangePasswordError,
-  createUser,
-  CreateUserError,
-  getUser,
-  User,
-} from 'db/users/users_repo';
 import { Request, Response, Router } from 'express';
 import {
   ApiError,
@@ -23,6 +15,14 @@ import {
 } from 'paradb-api-schema';
 import passport from 'passport';
 import { createSessionFromUser, getUserSession } from 'session/session';
+import {
+  changePassword,
+  ChangePasswordError,
+  createUser,
+  CreateUserError,
+  getUser,
+  User,
+} from './users_repo';
 
 const usersRouter = Router({ strict: true });
 

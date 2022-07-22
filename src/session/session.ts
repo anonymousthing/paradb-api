@@ -1,5 +1,4 @@
 import { validatePassword } from 'crypto/crypto';
-import { getUser, User } from 'db/users/users_repo';
 import { Request, Response } from 'express';
 import {
   deserializeLoginRequest,
@@ -9,6 +8,7 @@ import {
   UserSession,
 } from 'paradb-api-schema';
 import passport from 'passport';
+import { getUser, User } from 'services/users/users_repo';
 
 type VerifiedFn = (err: Error | null, user: any, info?: any) => void;
 type VerifyFn =
@@ -69,7 +69,10 @@ export function installSession() {
         }
         const user = result
           .value;
-        const isValid = await validatePassword(password, user.password);
+        const isValid = await validatePassword(
+          password,
+          user.password,
+        );
         if (!isValid) {
           return done(null, false, { message: 'invalid-credentials' });
         }

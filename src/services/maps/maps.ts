@@ -1,5 +1,4 @@
 import { error, guardAuth, handleAsyncErrors } from 'api/helpers';
-import { createMap, deleteMap, getMap, GetMapError, listMaps } from 'db/maps/maps_repo';
 import { Request, Response, Router } from 'express';
 import {
   deserializeSubmitMapRequest,
@@ -11,6 +10,7 @@ import {
   serializeSubmitMapResponse,
 } from 'paradb-api-schema';
 import { getUserSession } from 'session/session';
+import { createMap, deleteMap, getMap, GetMapError, listMaps } from './maps_repo';
 
 export function createMapsRouter(mapsDir: string) {
   const mapsRouter = Router({ strict: true });

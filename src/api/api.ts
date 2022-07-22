@@ -1,6 +1,6 @@
-import { createMapsRouter } from 'api/maps/maps';
-import usersRouter from 'api/users/users';
 import express from 'express';
+import { createMapsRouter } from 'services/maps/maps';
+import usersRouter from 'services/users/users';
 
 export function createApiRouter(mapsDir: string) {
   const apiRouter = express.Router({ strict: true });
