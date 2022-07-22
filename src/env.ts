@@ -6,6 +6,7 @@ export type EnvVars = {
   mapsDir: string,
   sentryDsn: string,
   sentryEnvironment: string,
+  cookieSecret: string,
 };
 
 export function initEnvVars() {
@@ -15,10 +16,11 @@ export function initEnvVars() {
     mapsDir: process.env.MAPS_DIR,
     sentryDsn: process.env.SENTRY_DSN,
     sentryEnvironment: process.env.SENTRY_ENV,
+    cookieSecret: process.env.COOKIE_SECRET,
   };
   let fail = false;
   for (const [key, value] of Object.entries(_envVars)) {
-    if (value == null) {
+    if (value == null || value.trim() === '') {
       console.error(`${key} has been left blank in .env -- intentional?`);
       fail = true;
     }

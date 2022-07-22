@@ -21,7 +21,7 @@ async function main(envVars: EnvVars) {
 
   app.use(cookieParser());
   app.use(express.raw({ type: 'application/octet-stream', limit: '150mb' }));
-  app.use(session({ secret: 'catsaregreat' }));
+  app.use(session({ secret: envVars.cookieSecret }));
   app.use(passport.initialize());
   app.use(passport.session());
 
