@@ -1,13 +1,14 @@
 import { snakeCaseKeys } from 'db/helpers';
-import { validateMapFiles } from 'db/maps/maps_repo';
-import { pool } from 'db/pool';
+import { getPool } from 'db/pool';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { validateMapFiles } from 'services/maps/maps_repo';
 import * as unzipper from 'unzipper';
 import * as db from 'zapatos/db';
 import { setupMigration } from './migration';
 
 async function processMap(mapPath: string) {
+  const pool = getPool();
   const basename = path.basename(mapPath);
   const id = basename.match(/(M[A-F0-9]{6})\.zip/)?.[1];
   if (id == null) {
@@ -57,6 +58,7 @@ async function processMap(mapPath: string) {
  */
 (async () => {
   const envVars = await setupMigration();
+  const pool = getPool();
 
   // Drop all map difficulties
   await db.truncate('difficulties').run(pool);

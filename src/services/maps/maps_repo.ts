@@ -2,7 +2,7 @@ import { checkExists } from 'base/conditions';
 import { PromisedResult, Result, ResultError, wrapError } from 'base/result';
 import { camelCaseKeys, snakeCaseKeys } from 'db/helpers';
 import { generateId, IdDomain } from 'db/id_gen';
-import { pool } from 'db/pool';
+import { getPool } from 'db/pool';
 // @ts-ignore
 import * as encoding from 'encoding';
 import * as fs from 'fs/promises';
@@ -15,6 +15,7 @@ export const enum ListMapError {
   UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
 export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
+  const pool = getPool();
   try {
     const maps = await db
       .select('maps', db.all, {
@@ -47,6 +48,7 @@ export const enum GetMapError {
   UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
 export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
+  const pool = getPool();
   try {
     const map = await db
       .selectOne('maps', { id }, {
@@ -81,6 +83,7 @@ export const enum DeleteMapError {
   UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
 export async function deleteMap(id: string): PromisedResult<undefined, DeleteMapError> {
+  const pool = getPool();
   try {
     await db.serializable(
       pool,
@@ -109,6 +112,7 @@ export async function createMap(
   mapsDir: string,
   opts: CreateMapOpts,
 ): PromisedResult<PDMap, CreateMapError | ValidateMapError | ValidateMapDifficultyError> {
+  const pool = getPool();
   const id = await generateId(IdDomain.MAPS, async id => (await getMap(id)).success);
   if (id == null) {
     return { success: false, errors: [{ type: CreateMapError.TOO_MANY_ID_GEN_ATTEMPTS }] };

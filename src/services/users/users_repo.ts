@@ -2,7 +2,7 @@ import { PromisedResult, ResultError, wrapError } from 'base/result';
 import { createPassword } from 'crypto/crypto';
 import { CamelCase, camelCaseKeys, fromBytea, snakeCaseKeys, toBytea } from 'db/helpers';
 import { generateId, IdDomain } from 'db/id_gen';
-import { pool } from 'db/pool';
+import { getPool } from 'db/pool';
 import * as db from 'zapatos/db';
 import { users } from 'zapatos/schema';
 import zxcvbn from 'zxcvbn';
@@ -25,6 +25,7 @@ export const enum GetUserError {
   UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
 export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserError> {
+  const pool = getPool();
   let user: users.JSONSelectable | undefined;
   try {
     if (opts.by === 'username') {
@@ -69,6 +70,7 @@ export const enum CreateUserError {
   EMAIL_TAKEN = 'email_taken',
 }
 export async function createUser(opts: CreateUserOpts): PromisedResult<User, CreateUserError> {
+  const pool = getPool();
   const errorResult: ResultError<CreateUserError> = { success: false, errors: [] };
   // Validate password requirements
   const feedback = isPasswordWeak(opts.password, opts.email, opts.username);
@@ -138,6 +140,7 @@ export const enum ChangePasswordError {
 export async function changePassword(
   opts: ChangePasswordOpts,
 ): PromisedResult<undefined, ChangePasswordError> {
+  const pool = getPool();
   const errorResult: ResultError<ChangePasswordError> = { success: false, errors: [] };
 
   // Validate password requirements

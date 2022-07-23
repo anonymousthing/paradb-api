@@ -13,7 +13,7 @@ import path from 'path';
 import { installSession } from 'session/session';
 
 async function main(envVars: EnvVars) {
-  await initPool();
+  await initPool(envVars);
   const port = 8080;
   const app = express();
 

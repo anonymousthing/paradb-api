@@ -1,6 +1,9 @@
 import * as fs from 'fs/promises';
 
 export type EnvVars = {
+  pgHost: string,
+  pgPort: number,
+  pgDatabase: string,
   pgUser: string,
   pgPassword: string,
   mapsDir: string,
@@ -11,6 +14,9 @@ export type EnvVars = {
 
 export function initEnvVars() {
   const _envVars: { [K in keyof EnvVars]: EnvVars[K] | undefined } = {
+    pgHost: process.env.PGHOST,
+    pgPort: Number(process.env.PGPORT || undefined),
+    pgDatabase: process.env.PGDATABASE,
     pgUser: process.env.PGUSER,
     pgPassword: process.env.PGPASSWORD,
     mapsDir: process.env.MAPS_DIR,
@@ -20,7 +26,11 @@ export function initEnvVars() {
   };
   let fail = false;
   for (const [key, value] of Object.entries(_envVars)) {
-    if (value == null || value.trim() === '') {
+    if (
+      value == null
+      || (typeof value === 'string' && value.trim() === '')
+      || (typeof value === 'number' && isNaN(value))
+    ) {
       console.error(`${key} has been left blank in .env -- intentional?`);
       fail = true;
     }

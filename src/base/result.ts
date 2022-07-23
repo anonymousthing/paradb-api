@@ -26,3 +26,14 @@ export function wrapError<E extends string, _Error extends ResultError<E>>(
 export type Result<T, E extends string> = ResultSuccess<T> | ResultError<E>;
 
 export type PromisedResult<T, E extends string> = Promise<Result<T, E>>;
+
+/**
+ * Unsafe -- exported for tests only
+ */
+export async function _unwrap<T, E extends string>(r: PromisedResult<T, E>) {
+  const _r = await r;
+  if (!_r.success) {
+    throw new Error('Attempted to unwrap a PromisedResult but it was not successful');
+  }
+  return _r.value;
+}

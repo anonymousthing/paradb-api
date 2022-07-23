@@ -5,7 +5,7 @@ import path from 'path';
 export const setupMigration = async () => {
   require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
   const envVars = initEnvVars();
-  await initPool();
+  await initPool(envVars);
   return envVars;
 };
 
