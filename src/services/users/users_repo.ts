@@ -54,6 +54,9 @@ export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserEr
 }
 
 function isPasswordWeak(password: string, email: string, username: string) {
+  if (password.length < 8) {
+    return 'Your password is too short';
+  }
   // Validate password requirements
   const passwordStrengthResult = zxcvbn(password, [email, username]);
   if (passwordStrengthResult.feedback.warning || passwordStrengthResult.score < 2) {

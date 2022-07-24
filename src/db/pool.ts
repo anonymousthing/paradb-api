@@ -5,8 +5,6 @@ import pg from 'pg';
 const db: { pool: pg.Pool | undefined } = { pool: undefined };
 
 export async function initPool(envVars: EnvVars) {
-  console.log('initialized db pool');
-
   // Test DB
   try {
     db.pool = new pg.Pool({

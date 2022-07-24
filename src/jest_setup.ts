@@ -1,3 +1,4 @@
+import { createServer } from 'app';
 import { getPool, initPool } from 'db/pool';
 import { EnvVars } from 'env';
 import * as fs from 'fs/promises';
@@ -5,9 +6,10 @@ import * as os from 'os';
 import * as path from 'path';
 
 let envVars: EnvVars | undefined = undefined;
+let tmpMapsDir: string;
 
 async function createTestEnvVars() {
-  const tmpMapsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'paradb_test_'));
+  tmpMapsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'paradb_test_'));
   return {
     pgHost: 'localhost',
     pgPort: 5432,
@@ -24,6 +26,7 @@ async function createTestEnvVars() {
 beforeAll(async () => {
   if (envVars == null) {
     envVars = await createTestEnvVars();
+    (global as any).server = createServer(envVars);
   }
   await initPool(envVars);
 });
@@ -35,4 +38,7 @@ afterEach(async () => {
 });
 afterAll(async () => {
   await getPool().end();
+  fs.rm(tmpMapsDir, { recursive: true, force: true });
 });
+
+global.console.info = jest.fn();
