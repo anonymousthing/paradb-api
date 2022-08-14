@@ -10,7 +10,16 @@ import {
   serializeSubmitMapResponse,
 } from 'paradb-api-schema';
 import { getUserSession } from 'session/session';
-import { createMap, deleteMap, getMap, GetMapError, listMaps } from './maps_repo';
+import {
+  createMap,
+  CreateMapError,
+  deleteMap,
+  getMap,
+  GetMapError,
+  listMaps,
+  ValidateMapDifficultyError,
+  ValidateMapError,
+} from './maps_repo';
 
 export function createMapsRouter(mapsDir: string) {
   const mapsRouter = Router({ strict: true });
@@ -98,13 +107,14 @@ export function createMapsRouter(mapsDir: string) {
       const submitMapReq = deserializeSubmitMapRequest(req.body);
       const result = await createMap(mapsDir, { uploader: user.id, mapFile: submitMapReq.mapData });
       if (!result.success) {
-        // TODO: granular errors
+        // TODO: report all errors back to the client and not just the first one
+        const [statusCode, message] = submitErrorMap[result.errors[0].type];
         return error({
           res,
-          statusCode: 500,
+          statusCode,
           errorSerializer: serializeSubmitMapError,
-          errorBody: { title: undefined, artist: undefined, downloadLink: undefined },
-          message: 'Could not submit map',
+          errorBody: {},
+          message,
           resultError: result,
         });
       }
@@ -116,3 +126,20 @@ export function createMapsRouter(mapsDir: string) {
 
   return mapsRouter;
 }
+
+const internalError: [number, string] = [500, 'Could not submit map'];
+// dprint-ignore
+const submitErrorMap: Record<
+  CreateMapError | ValidateMapError | ValidateMapDifficultyError,
+  [number, string]
+> = {
+  [CreateMapError.TOO_MANY_ID_GEN_ATTEMPTS]: internalError,
+  [CreateMapError.UNKNOWN_DB_ERROR]: internalError,
+  [ValidateMapError.INCORRECT_FOLDER_NAME]: [400, 'The top-level folder name needs to match the song title'],
+  [ValidateMapError.INCORRECT_FOLDER_STRUCTURE]: [400, 'Incorrect folder structure. There needs to be exactly one top-level folder containing all of the files, and the folder needs to match the song title.'],
+  [ValidateMapError.MISMATCHED_DIFFICULTY_METADATA]: [400, 'All difficulties need to have identical metadata (excluding complexity)'],
+  [ValidateMapError.MISSING_ALBUM_ART]: [400, 'Missing album art'],
+  [ValidateMapError.NO_DATA]: [400, 'Invalid map archive; could not find map data'],
+  [ValidateMapDifficultyError.INVALID_FORMAT]: [400, 'Invalid map data; could not process the map .rlrr files'],
+  [ValidateMapDifficultyError.MISSING_VALUES]: [400, 'Invalid map data; a map .rlrr is missing a required field (title, artist or complexity)'],
+};

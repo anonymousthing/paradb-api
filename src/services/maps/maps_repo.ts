@@ -182,7 +182,13 @@ async function storeFile(
   ValidateMapError | ValidateMapDifficultyError
 > {
   const buffer = Buffer.from(opts.mapFile);
-  const map = await unzipper.Open.buffer(buffer);
+  let map: unzipper.CentralDirectory;
+  try {
+    map = await unzipper.Open.buffer(buffer);
+  } catch (e) {
+    // Failed to open zip -- corrupted, or incorrect format
+    return { success: false, errors: [{ type: ValidateMapError.NO_DATA }] };
+  }
   // A submitted map must have exactly one directory in it, and all of the files must be directly
   // under that directory.
   const files = map.files.filter(f => f.type === 'File');
