@@ -15,7 +15,10 @@ export function createServer(envVars: EnvVars) {
   installSession();
 
   app.use(cookieParser());
-  app.use(express.raw({ type: 'application/octet-stream', limit: '150mb' }));
+  // Set MIME type for requests and responses to 'application/x-protobuf' to allow Cloudflare to use
+  // brotli / gzip encoding over the wire. We don't actually use protobuf but Cloudflare doesn't let
+  // you force compression for 'application/octet-stream', so this is the closest.
+  app.use(express.raw({ type: 'application/x-protobuf', limit: '150mb' }));
   app.use(session({ secret: envVars.cookieSecret }));
   app.use(passport.initialize());
   app.use(passport.session());

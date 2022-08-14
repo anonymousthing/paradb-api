@@ -16,7 +16,7 @@ export const testPost = async <Req, Res>(
     builder.set('Cookie', cookie);
   }
   const resp = await builder
-    .type('application/octet-stream')
+    .type('application/x-protobuf')
     .send(serializer(body));
 
   return deserializer(resp.body);
@@ -28,7 +28,7 @@ export const testPost = async <Req, Res>(
 export const testAuthenticate = async () => {
   const resp = await testServer()
     .post('/api/users/signup')
-    .type('application/octet-stream')
+    .type('application/x-protobuf')
     .send(
       serializeSignupRequest({
         email: 'test@test.com',
