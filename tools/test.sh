@@ -5,9 +5,9 @@ TEST_DB="paradb_test"
 POSTGRES_USER="postgres"
 
 echo "Dropping database: $TEST_DB"
-su -c "dropdb --if-exists \"$TEST_DB\"" "$POSTGRES_USER"
-su -c "createdb \"$TEST_DB\"" "$POSTGRES_USER"
-su -c "psql -d \"$TEST_DB\" -f \"$SCRIPT_DIR/../db/init.sql\"" "$POSTGRES_USER"
+sudo -u postgres -E dropdb --if-exists "$TEST_DB"
+sudo -u postgres -E createdb "$TEST_DB"
+sudo -u postgres -E psql -d "$TEST_DB" -f "$SCRIPT_DIR/../db/init.sql"
 
 echo "Running tests..."
 yarn jest

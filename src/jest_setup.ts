@@ -12,7 +12,7 @@ async function createTestEnvVars() {
   tmpMapsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'paradb_test_'));
   return {
     pgHost: 'localhost',
-    pgPort: 5432,
+    pgPort: Number(process.env.PGPORT) || 5432,
     pgDatabase: 'paradb_test',
     pgUser: 'paradb_test',
     pgPassword: '1234',
