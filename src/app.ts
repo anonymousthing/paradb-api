@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/node';
-import { createApiRouter } from 'api/api';
+import { contentType, createApiRouter } from 'api/api';
 import cookieParser from 'cookie-parser';
 import session from 'cookie-session';
 import { EnvVars } from 'env';
@@ -15,10 +15,7 @@ export function createServer(envVars: EnvVars) {
   installSession();
 
   app.use(cookieParser());
-  // Set MIME type for requests and responses to 'application/x-protobuf' to allow Cloudflare to use
-  // brotli / gzip encoding over the wire. We don't actually use protobuf but Cloudflare doesn't let
-  // you force compression for 'application/octet-stream', so this is the closest.
-  app.use(express.raw({ type: 'application/x-protobuf', limit: '150mb' }));
+  app.use(express.raw({ type: contentType, limit: '150mb' }));
   app.use(session({ secret: envVars.cookieSecret }));
   app.use(passport.initialize());
   app.use(passport.session());

@@ -199,14 +199,9 @@ async function storeFile(
   if (mapName == null || !files.every(f => path.dirname(f.path) === mapName)) {
     return { success: false, errors: [{ type: ValidateMapError.INCORRECT_FOLDER_STRUCTURE }] };
   }
-  const validatedResult = await validateMapFiles({ mapFiles: files });
+  const validatedResult = await validateMapFiles({ expectedMapName: mapName, mapFiles: files });
   if (!validatedResult.success) {
     return validatedResult;
-  }
-  // The map directory needs to be the same as the song title.
-  // TODO: remove this check once Paradiddle supports arbitrary folder names
-  if (validatedResult.value.title !== mapName) {
-    return { success: false, errors: [{ type: ValidateMapError.INCORRECT_FOLDER_NAME }] };
   }
   const { title, artist, author, description, complexity, difficulties, albumArtFiles } =
     validatedResult.value;
@@ -235,16 +230,20 @@ function allExists<T>(a: (T | undefined)[]): a is T[] {
   return a.every(t => t != null);
 }
 export async function validateMapFiles(
-  opts: { mapFiles: unzipper.File[] },
+  opts: { expectedMapName: string, mapFiles: unzipper.File[] },
 ): PromisedResult<
   RawMap & { albumArtFiles: unzipper.File[] },
   ValidateMapError | ValidateMapDifficultyError
 > {
+  // The map directory needs to have the same name as the rlrr files.
+  // TODO: remove this check once Paradiddle supports arbitrary folder names
+  const difficultyFiles = opts.mapFiles.filter(f => f.path.endsWith('.rlrr'));
+  if (!difficultyFiles.every(f => path.basename(f.path).startsWith(opts.expectedMapName))) {
+    return { success: false, errors: [{ type: ValidateMapError.INCORRECT_FOLDER_NAME }] };
+  }
+
   const difficultyResults = await Promise.all(
-    opts
-      .mapFiles
-      .filter(f => f.path.endsWith('.rlrr'))
-      .map(f => f.buffer().then(b => validateMapMetadata(path.basename(f.path), b))),
+    difficultyFiles.map(f => f.buffer().then(b => validateMapMetadata(path.basename(f.path), b))),
   );
   if (difficultyResults.length === 0) {
     return { success: false, errors: [{ type: ValidateMapError.NO_DATA }] };

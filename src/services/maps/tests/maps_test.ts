@@ -17,6 +17,11 @@ describe('maps handler', () => {
     expect(resp).toEqual({ success: true, id: expect.stringMatching(/^M[0-9A-F]{6}$/) });
   });
 
+  it('allows maps that have a different folder name to the song title, as long as it matches the rlrr files', async () => {
+    const resp = await testMapUpload('files/Test_valid_different_folder_name.zip');
+    expect(resp).toEqual({ success: true, id: expect.stringMatching(/^M[0-9A-F]{6}$/) });
+  });
+
   describe('fails when', () => {
     it('has mismatched metadata in each rlrr', async () => {
       const resp = await testMapUpload('files/Test_different_metadata.zip');
@@ -32,7 +37,7 @@ describe('maps handler', () => {
       expect(resp).toEqual({
         success: false,
         statusCode: 400,
-        errorMessage: 'The top-level folder name needs to match the song title',
+        errorMessage: 'The top-level folder name needs to match the names of the rlrr files',
       });
     });
 
