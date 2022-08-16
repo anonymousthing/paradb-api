@@ -82,7 +82,7 @@ usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
           break;
         case CreateUserError.UNKNOWN_DB_ERROR:
           statusCode = 500;
-          errorMessage = 'Unknown error, please try again later';
+          errorMessage = 'Unknown error, please try again later, error details: ' + error.stack;
           break;
         default:
           throw new UnreachableError(error.type);
