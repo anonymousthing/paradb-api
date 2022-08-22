@@ -32,12 +32,20 @@ export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
           'author',
           'uploader',
           'description',
+          'complexity',
           'album_art',
         ],
         order: { by: 'title', direction: 'ASC' },
       })
       .run(pool);
-    return { success: true, value: maps.map(m => camelCaseKeys(m)) as PDMap[] };
+    return {
+      success: true,
+      value: maps.map(m => ({
+        ...camelCaseKeys(m),
+        // TODO: pull favorites from favorites table
+        favorites: 0,
+      })),
+    };
   } catch (e) {
     return { success: false, errors: [wrapError(e, ListMapError.UNKNOWN_DB_ERROR)] };
   }
@@ -65,6 +73,7 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
           'author',
           'uploader',
           'description',
+          'complexity',
           'album_art',
         ],
       })
@@ -72,7 +81,14 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
     if (map == null) {
       return { success: false, errors: [{ type: GetMapError.MISSING_MAP }] };
     }
-    return { success: true, value: camelCaseKeys(map) as PDMap };
+    return {
+      success: true,
+      value: {
+        ...camelCaseKeys(map),
+        // TODO: pull favorites from favorites table
+        favorites: 0,
+      },
+    };
   } catch (e) {
     return { success: false, errors: [wrapError(e, GetMapError.UNKNOWN_DB_ERROR)] };
   }
@@ -157,7 +173,12 @@ export async function createMap(
       .run(pool);
     return {
       success: true,
-      value: camelCaseKeys({ ...insertedMap, difficulties: insertedDifficulties }),
+      value: camelCaseKeys({
+        ...insertedMap,
+        difficulties: insertedDifficulties,
+        // TODO: pull favorites from favorites table instead.
+        favorites: 0,
+      }),
     };
   } catch (e) {
     return { success: false, errors: [wrapError(e, CreateMapError.UNKNOWN_DB_ERROR)] };
