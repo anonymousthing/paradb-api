@@ -1,8 +1,4 @@
-import {
-  deserializeGetUserResponse,
-  deserializeSignupResponse,
-  serializeSignupRequest,
-} from 'paradb-api-schema';
+import { deserializeSignupResponse, serializeSignupRequest } from 'paradb-api-schema';
 import supertest from 'supertest';
 
 // It's a function in order to defer execution until after the beforeAll() step has run
@@ -24,6 +20,19 @@ export const testPost = async <Req, Res>(
     .send(serializer(body));
 
   return deserializer(resp.body);
+};
+
+export const testGet = async <Res>(
+  url: string,
+  deserialize: (b: Uint8Array) => Res,
+  cookie?: string,
+) => {
+  const builder = testServer().get(url);
+  if (cookie != null) {
+    builder.set('Cookie', cookie);
+  }
+  const resp = await builder.type('application/octet-stream');
+  return deserialize(resp.body);
 };
 
 /**

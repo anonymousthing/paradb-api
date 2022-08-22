@@ -1,4 +1,5 @@
 import { error, guardAuth, handleAsyncErrors } from 'api/helpers';
+import { DbError } from 'db/helpers';
 import { Request, Response, Router } from 'express';
 import {
   deserializeSubmitMapRequest,
@@ -14,9 +15,9 @@ import {
   createMap,
   CreateMapError,
   deleteMap,
+  findMaps,
   getMap,
   GetMapError,
-  listMaps,
   ValidateMapDifficultyError,
   ValidateMapError,
 } from './maps_repo';
@@ -25,7 +26,7 @@ export function createMapsRouter(mapsDir: string) {
   const mapsRouter = Router({ strict: true });
 
   mapsRouter.get('/', async (req, res: Response<Buffer, {}>) => {
-    const result = await listMaps();
+    const result = await findMaps();
     if (!result.success) {
       return error({
         res,
@@ -130,11 +131,11 @@ export function createMapsRouter(mapsDir: string) {
 const internalError: [number, string] = [500, 'Could not submit map'];
 // dprint-ignore
 const submitErrorMap: Record<
-  CreateMapError | ValidateMapError | ValidateMapDifficultyError,
+  DbError | CreateMapError | ValidateMapError | ValidateMapDifficultyError,
   [number, string]
 > = {
+  [DbError.UNKNOWN_DB_ERROR]: internalError,
   [CreateMapError.TOO_MANY_ID_GEN_ATTEMPTS]: internalError,
-  [CreateMapError.UNKNOWN_DB_ERROR]: internalError,
   [ValidateMapError.INCORRECT_FOLDER_NAME]: [400, 'The top-level folder name needs to match the names of the rlrr files'],
   [ValidateMapError.INCORRECT_FOLDER_STRUCTURE]: [400, 'Incorrect folder structure. There needs to be exactly one top-level folder containing all of the files, and the folder needs to match the song title.'],
   [ValidateMapError.MISMATCHED_DIFFICULTY_METADATA]: [400, 'All difficulties need to have identical metadata (excluding complexity)'],

@@ -10,7 +10,8 @@
     "schema": "tools/update_schema.sh",
     "outage": "ts-node src/outage/index.ts",
     "migrate": "ts-node",
-    "test": "tools/test.sh",
+    "pretest": "tools/pretest.sh",
+    "test": "yarn pretest && yarn jest",
     "build": "tsc"
   },
   "devDependencies": {

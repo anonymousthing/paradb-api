@@ -1,6 +1,6 @@
 import { checkExists } from 'base/conditions';
 import { PromisedResult, Result, ResultError, wrapError } from 'base/result';
-import { camelCaseKeys, snakeCaseKeys } from 'db/helpers';
+import { camelCaseKeys, DbError, snakeCaseKeys } from 'db/helpers';
 import { generateId, IdDomain } from 'db/id_gen';
 import { getPool } from 'db/pool';
 // @ts-ignore
@@ -11,14 +11,17 @@ import path from 'path';
 import * as unzipper from 'unzipper';
 import * as db from 'zapatos/db';
 
-export const enum ListMapError {
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
-}
-export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
+export type FindMapsBy = { by: 'id', ids: string[] };
+
+// TODO: add search parameters to findMaps
+export async function findMaps(by?: FindMapsBy): PromisedResult<PDMap[], DbError> {
   const pool = getPool();
+
+  const whereable = by ? { id: db.conditions.isIn(by.ids) } : db.all;
+
   try {
     const maps = await db
-      .select('maps', db.all, {
+      .select('maps', whereable, {
         lateral: {
           difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
             columns: ['difficulty', 'difficulty_name'],
@@ -47,7 +50,7 @@ export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
       })),
     };
   } catch (e) {
-    return { success: false, errors: [wrapError(e, ListMapError.UNKNOWN_DB_ERROR)] };
+    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 }
 
@@ -96,9 +99,8 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
 
 export const enum DeleteMapError {
   MISSING_MAP = 'missing_map',
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
-export async function deleteMap(id: string): PromisedResult<undefined, DeleteMapError> {
+export async function deleteMap(id: string): PromisedResult<undefined, DbError | DeleteMapError> {
   const pool = getPool();
   try {
     await db.serializable(
@@ -111,7 +113,7 @@ export async function deleteMap(id: string): PromisedResult<undefined, DeleteMap
     );
     return { success: true, value: undefined };
   } catch (e) {
-    return { success: false, errors: [wrapError(e, DeleteMapError.UNKNOWN_DB_ERROR)] };
+    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 }
 
@@ -122,12 +124,11 @@ type CreateMapOpts = {
 };
 export const enum CreateMapError {
   TOO_MANY_ID_GEN_ATTEMPTS = 'too_many_id_gen_attempts',
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
 export async function createMap(
   mapsDir: string,
   opts: CreateMapOpts,
-): PromisedResult<PDMap, CreateMapError | ValidateMapError | ValidateMapDifficultyError> {
+): PromisedResult<PDMap, DbError | CreateMapError | ValidateMapError | ValidateMapDifficultyError> {
   const pool = getPool();
   const id = await generateId(IdDomain.MAPS, async id => (await getMap(id)).success);
   if (id == null) {
@@ -155,7 +156,7 @@ export async function createMap(
           uploader: opts.uploader,
           albumArt: map.albumArt || null,
           description: map.description || null,
-          complexity: map.complexity,
+          complexity: checkExists(map.complexity, 'complexity'),
         }),
       )
       .run(pool);
@@ -166,7 +167,7 @@ export async function createMap(
           snakeCaseKeys({
             mapId: id,
             difficulty: d.difficulty || null,
-            difficultyName: d.difficultyName || null,
+            difficultyName: checkExists(d.difficultyName, 'difficultyName'),
           })
         ),
       )
@@ -181,7 +182,7 @@ export async function createMap(
       }),
     };
   } catch (e) {
-    return { success: false, errors: [wrapError(e, CreateMapError.UNKNOWN_DB_ERROR)] };
+    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 }
 
