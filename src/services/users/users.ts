@@ -1,6 +1,7 @@
 import { error, guardAuth } from 'api/helpers';
 import { UnreachableError } from 'base/conditions';
 import { validatePassword } from 'crypto/crypto';
+import { DbError } from 'db/helpers';
 import { Request, Response, Router } from 'express';
 import {
   ApiError,
@@ -80,7 +81,7 @@ usersRouter.post('/signup', async (req, res: Response<Buffer, {}>) => {
           statusCode = 500;
           errorMessage = 'Could not create user, please try again later';
           break;
-        case CreateUserError.UNKNOWN_DB_ERROR:
+        case DbError.UNKNOWN_DB_ERROR:
           statusCode = 500;
           errorMessage = 'Unknown error, please try again later';
           break;

@@ -1,6 +1,6 @@
 import { PromisedResult, ResultError, wrapError } from 'base/result';
 import { createPassword } from 'crypto/crypto';
-import { CamelCase, camelCaseKeys, fromBytea, snakeCaseKeys, toBytea } from 'db/helpers';
+import { CamelCase, camelCaseKeys, DbError, fromBytea, snakeCaseKeys, toBytea } from 'db/helpers';
 import { generateId, IdDomain } from 'db/id_gen';
 import { getPool } from 'db/pool';
 import * as db from 'zapatos/db';
@@ -22,9 +22,8 @@ type GetUserByIdOpts = { by: 'id', id: string };
 type GetUserByEmailOpts = { by: 'email', email: string };
 export const enum GetUserError {
   NO_USER = 'no_user',
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
-export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserError> {
+export async function getUser(opts: GetUserOpts): PromisedResult<User, DbError | GetUserError> {
   const pool = getPool();
   let user: users.JSONSelectable | undefined;
   try {
@@ -44,7 +43,7 @@ export async function getUser(opts: GetUserOpts): PromisedResult<User, GetUserEr
         .run(pool);
     }
   } catch (e) {
-    return { success: false, errors: [wrapError(e, GetUserError.UNKNOWN_DB_ERROR)] };
+    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 
   if (user != null) {
@@ -67,14 +66,15 @@ function isPasswordWeak(password: string, email: string, username: string) {
 type CreateUserOpts = { username: string, email: string, password: string };
 export const enum CreateUserError {
   TOO_MANY_ID_GEN_ATTEMPTS = 'too_many_id_gen_attempts',
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
   INSECURE_PASSWORD = 'insecure_password',
   USERNAME_TAKEN = 'username_taken',
   EMAIL_TAKEN = 'email_taken',
 }
-export async function createUser(opts: CreateUserOpts): PromisedResult<User, CreateUserError> {
+export async function createUser(
+  opts: CreateUserOpts,
+): PromisedResult<User, DbError | CreateUserError> {
   const pool = getPool();
-  const errorResult: ResultError<CreateUserError> = { success: false, errors: [] };
+  const errorResult: ResultError<DbError | CreateUserError> = { success: false, errors: [] };
   // Validate password requirements
   const feedback = isPasswordWeak(opts.password, opts.email, opts.username);
   // Note that we don't early exit here with the weak password error, as we want to show all possible
@@ -94,7 +94,7 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
       errorResult.errors.push({ type: CreateUserError.EMAIL_TAKEN });
     }
   } catch (e) {
-    errorResult.errors.push(wrapError(e, CreateUserError.UNKNOWN_DB_ERROR));
+    errorResult.errors.push(wrapError(e, DbError.UNKNOWN_DB_ERROR));
   }
 
   if (errorResult.errors.length) {
@@ -131,18 +131,17 @@ export async function createUser(opts: CreateUserOpts): PromisedResult<User, Cre
       .run(pool);
     return { success: true, value: camelCaseKeys(inserted) };
   } catch (e) {
-    return { success: false, errors: [wrapError(e, CreateUserError.UNKNOWN_DB_ERROR)] };
+    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 }
 
 type ChangePasswordOpts = { user: User, newPassword: string };
 export const enum ChangePasswordError {
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
   INSECURE_PASSWORD = 'insecure_password',
 }
 export async function changePassword(
   opts: ChangePasswordOpts,
-): PromisedResult<undefined, ChangePasswordError> {
+): PromisedResult<undefined, DbError | ChangePasswordError> {
   const pool = getPool();
   const errorResult: ResultError<ChangePasswordError> = { success: false, errors: [] };
 
@@ -172,6 +171,6 @@ export async function changePassword(
 
     return { success: true, value: undefined };
   } catch (e) {
-    return { success: false, errors: [wrapError(e, ChangePasswordError.UNKNOWN_DB_ERROR)] };
+    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 }

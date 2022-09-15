@@ -87,3 +87,7 @@ export function toBytea(s: string): ByteArrayString {
 export function fromBytea(ba: ByteArrayString): string {
   return toBuffer(ba).toString('utf8');
 }
+
+export const enum DbError {
+  UNKNOWN_DB_ERROR = 'unknown_db_error',
+}

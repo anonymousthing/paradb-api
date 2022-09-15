@@ -1,6 +1,6 @@
 import { checkExists } from 'base/conditions';
 import { PromisedResult, Result, ResultError, wrapError } from 'base/result';
-import { camelCaseKeys, snakeCaseKeys } from 'db/helpers';
+import { camelCaseKeys, DbError, snakeCaseKeys } from 'db/helpers';
 import { generateId, IdDomain } from 'db/id_gen';
 import { getPool } from 'db/pool';
 // @ts-ignore
@@ -11,18 +11,38 @@ import path from 'path';
 import * as unzipper from 'unzipper';
 import * as db from 'zapatos/db';
 
-export const enum ListMapError {
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
-}
-export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
+export type FindMapsBy = { by: 'id', ids: string[] };
+
+// TODO: add search parameters to findMaps
+export async function findMaps(by?: FindMapsBy, userId?: string): PromisedResult<PDMap[], DbError> {
   const pool = getPool();
+
+  const whereable = by ? { id: db.conditions.isIn(by.ids) } : db.all;
+
   try {
     const maps = await db
-      .select('maps', db.all, {
+      .select('maps', whereable, {
         lateral: {
           difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
             columns: ['difficulty', 'difficulty_name'],
           }),
+          favorites: db.count('favorites', { map_id: db.parent('id') }),
+          ...(userId
+            ? {
+              userProjection: db.selectOne('favorites', {
+                map_id: db.parent('id'),
+                user_id: userId,
+              }, {
+                columns: [],
+                lateral: {
+                  isFavorited: db.selectOne('favorites', {
+                    map_id: db.parent('map_id'),
+                    user_id: userId,
+                  }, { alias: 'favorites2' }),
+                },
+              }),
+            }
+            : {}),
         },
         columns: [
           'id',
@@ -32,14 +52,25 @@ export async function listMaps(): PromisedResult<PDMap[], ListMapError> {
           'author',
           'uploader',
           'description',
+          'complexity',
           'album_art',
         ],
         order: { by: 'title', direction: 'ASC' },
       })
       .run(pool);
-    return { success: true, value: maps.map(m => camelCaseKeys(m)) as PDMap[] };
+    return {
+      success: true,
+      value: maps.map(m => ({
+        ...camelCaseKeys(m),
+        userProjection: {
+          isFavorited: !!m
+            .userProjection
+            ?.isFavorited,
+        },
+      })),
+    };
   } catch (e) {
-    return { success: false, errors: [wrapError(e, ListMapError.UNKNOWN_DB_ERROR)] };
+    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 }
 
@@ -47,15 +78,16 @@ export const enum GetMapError {
   MISSING_MAP = 'missing_map',
   UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
-export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
+export async function getMap(mapId: string, userId?: string): PromisedResult<PDMap, GetMapError> {
   const pool = getPool();
   try {
     const map = await db
-      .selectOne('maps', { id }, {
+      .selectOne('maps', { id: mapId }, {
         lateral: {
           difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
             columns: ['difficulty', 'difficulty_name'],
           }),
+          favorites: db.count('favorites', { map_id: db.parent('id') }),
         },
         columns: [
           'id',
@@ -65,6 +97,7 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
           'author',
           'uploader',
           'description',
+          'complexity',
           'album_art',
         ],
       })
@@ -72,7 +105,14 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
     if (map == null) {
       return { success: false, errors: [{ type: GetMapError.MISSING_MAP }] };
     }
-    return { success: true, value: camelCaseKeys(map) as PDMap };
+    const userProjection = userId
+      ? {
+        isFavorited: !!(await db
+          .selectOne('favorites', { map_id: mapId, user_id: userId })
+          .run(pool)),
+      }
+      : undefined;
+    return { success: true, value: { ...camelCaseKeys(map), userProjection } };
   } catch (e) {
     return { success: false, errors: [wrapError(e, GetMapError.UNKNOWN_DB_ERROR)] };
   }
@@ -80,9 +120,8 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
 
 export const enum DeleteMapError {
   MISSING_MAP = 'missing_map',
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
-export async function deleteMap(id: string): PromisedResult<undefined, DeleteMapError> {
+export async function deleteMap(id: string): PromisedResult<undefined, DbError | DeleteMapError> {
   const pool = getPool();
   try {
     await db.serializable(
@@ -95,7 +134,7 @@ export async function deleteMap(id: string): PromisedResult<undefined, DeleteMap
     );
     return { success: true, value: undefined };
   } catch (e) {
-    return { success: false, errors: [wrapError(e, DeleteMapError.UNKNOWN_DB_ERROR)] };
+    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 }
 
@@ -106,12 +145,11 @@ type CreateMapOpts = {
 };
 export const enum CreateMapError {
   TOO_MANY_ID_GEN_ATTEMPTS = 'too_many_id_gen_attempts',
-  UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
 export async function createMap(
   mapsDir: string,
   opts: CreateMapOpts,
-): PromisedResult<PDMap, CreateMapError | ValidateMapError | ValidateMapDifficultyError> {
+): PromisedResult<PDMap, DbError | CreateMapError | ValidateMapError | ValidateMapDifficultyError> {
   const pool = getPool();
   const id = await generateId(IdDomain.MAPS, async id => (await getMap(id)).success);
   if (id == null) {
@@ -139,7 +177,7 @@ export async function createMap(
           uploader: opts.uploader,
           albumArt: map.albumArt || null,
           description: map.description || null,
-          complexity: map.complexity,
+          complexity: checkExists(map.complexity, 'complexity'),
         }),
       )
       .run(pool);
@@ -150,17 +188,23 @@ export async function createMap(
           snakeCaseKeys({
             mapId: id,
             difficulty: d.difficulty || null,
-            difficultyName: d.difficultyName || null,
+            difficultyName: checkExists(d.difficultyName, 'difficultyName'),
           })
         ),
       )
       .run(pool);
     return {
       success: true,
-      value: camelCaseKeys({ ...insertedMap, difficulties: insertedDifficulties }),
+      value: camelCaseKeys({
+        ...insertedMap,
+        difficulties: insertedDifficulties,
+        // A newly created map will never be favorited
+        favorites: 0,
+        userProjection: { isFavorited: false },
+      }),
     };
   } catch (e) {
-    return { success: false, errors: [wrapError(e, CreateMapError.UNKNOWN_DB_ERROR)] };
+    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 }
 
