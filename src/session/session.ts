@@ -112,18 +112,30 @@ export function createSessionFromUser(user: User): UserSession {
   return { id, username, accountStatus, email };
 }
 
-export function getUserSession(req: Request, res: Response): UserSession | undefined {
-  const send403 = () => {
-    res.send(serializeApiError({ success: false, statusCode: 403, errorMessage: 'Unauthorized' }));
+/**
+ * @param silent this method will return a 403 back to the client by default; setting `silent` to true
+ * will prevent this from happening and it's up to the caller to handle the unauthorized flow instead.
+ * @returns
+ */
+export function getUserSession(
+  req: Request,
+  res: Response,
+  silent?: boolean,
+): UserSession | undefined {
+  const fail = () => {
+    if (!silent) {
+      res.send(
+        serializeApiError({ success: false, statusCode: 403, errorMessage: 'Unauthorized' }),
+      );
+    }
+    return undefined;
   };
   if (!req.isAuthenticated()) {
-    send403();
-    return;
+    return fail();
   }
   const user = req.user;
   if (!user) {
-    send403();
-    return;
+    return fail();
   }
   // TODO: validate against schema
   return user as UserSession;

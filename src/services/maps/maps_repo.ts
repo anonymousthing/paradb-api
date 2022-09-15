@@ -14,7 +14,7 @@ import * as db from 'zapatos/db';
 export type FindMapsBy = { by: 'id', ids: string[] };
 
 // TODO: add search parameters to findMaps
-export async function findMaps(by?: FindMapsBy): PromisedResult<PDMap[], DbError> {
+export async function findMaps(by?: FindMapsBy, userId?: string): PromisedResult<PDMap[], DbError> {
   const pool = getPool();
 
   const whereable = by ? { id: db.conditions.isIn(by.ids) } : db.all;
@@ -26,6 +26,23 @@ export async function findMaps(by?: FindMapsBy): PromisedResult<PDMap[], DbError
           difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
             columns: ['difficulty', 'difficulty_name'],
           }),
+          favorites: db.count('favorites', { map_id: db.parent('id') }),
+          ...(userId
+            ? {
+              userProjection: db.selectOne('favorites', {
+                map_id: db.parent('id'),
+                user_id: userId,
+              }, {
+                columns: [],
+                lateral: {
+                  isFavorited: db.selectOne('favorites', {
+                    map_id: db.parent('map_id'),
+                    user_id: userId,
+                  }, { alias: 'favorites2' }),
+                },
+              }),
+            }
+            : {}),
         },
         columns: [
           'id',
@@ -45,8 +62,11 @@ export async function findMaps(by?: FindMapsBy): PromisedResult<PDMap[], DbError
       success: true,
       value: maps.map(m => ({
         ...camelCaseKeys(m),
-        // TODO: pull favorites from favorites table
-        favorites: 0,
+        userProjection: {
+          isFavorited: !!m
+            .userProjection
+            ?.isFavorited,
+        },
       })),
     };
   } catch (e) {
@@ -58,15 +78,16 @@ export const enum GetMapError {
   MISSING_MAP = 'missing_map',
   UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
-export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
+export async function getMap(mapId: string, userId?: string): PromisedResult<PDMap, GetMapError> {
   const pool = getPool();
   try {
     const map = await db
-      .selectOne('maps', { id }, {
+      .selectOne('maps', { id: mapId }, {
         lateral: {
           difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
             columns: ['difficulty', 'difficulty_name'],
           }),
+          favorites: db.count('favorites', { map_id: db.parent('id') }),
         },
         columns: [
           'id',
@@ -84,14 +105,14 @@ export async function getMap(id: string): PromisedResult<PDMap, GetMapError> {
     if (map == null) {
       return { success: false, errors: [{ type: GetMapError.MISSING_MAP }] };
     }
-    return {
-      success: true,
-      value: {
-        ...camelCaseKeys(map),
-        // TODO: pull favorites from favorites table
-        favorites: 0,
-      },
-    };
+    const userProjection = userId
+      ? {
+        isFavorited: !!(await db
+          .selectOne('favorites', { map_id: mapId, user_id: userId })
+          .run(pool)),
+      }
+      : undefined;
+    return { success: true, value: { ...camelCaseKeys(map), userProjection } };
   } catch (e) {
     return { success: false, errors: [wrapError(e, GetMapError.UNKNOWN_DB_ERROR)] };
   }
@@ -177,8 +198,9 @@ export async function createMap(
       value: camelCaseKeys({
         ...insertedMap,
         difficulties: insertedDifficulties,
-        // TODO: pull favorites from favorites table instead.
+        // A newly created map will never be favorited
         favorites: 0,
+        userProjection: { isFavorited: false },
       }),
     };
   } catch (e) {

@@ -26,7 +26,9 @@ export function createMapsRouter(mapsDir: string) {
   const mapsRouter = Router({ strict: true });
 
   mapsRouter.get('/', async (req, res: Response<Buffer, {}>) => {
-    const result = await findMaps();
+    const user = getUserSession(req, res, true);
+    const userId = user?.id;
+    const result = await findMaps(undefined, userId);
     if (!result.success) {
       return error({
         res,
@@ -41,8 +43,10 @@ export function createMapsRouter(mapsDir: string) {
   });
 
   mapsRouter.get('/:mapId', async (req, res: Response<Buffer, {}>) => {
+    const user = getUserSession(req, res, true);
+    const userId = user?.id;
     const id = req.params.mapId;
-    const result = await getMap(id);
+    const result = await getMap(id, userId);
     if (result.success === false) {
       const isMissing = result.errors.some(e => e.type === GetMapError.MISSING_MAP);
       return error({
