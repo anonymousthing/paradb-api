@@ -42,8 +42,6 @@ export function createServer(envVars: EnvVars) {
   // Serve static assets
   app.use('/static', express.static(path.join(__dirname, '../fe/')));
   app.use('/favicon.png', (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')));
-  // TODO: allowlist to only images and zip files
-  app.use('/static/map_data/', express.static(envVars.mapsDir));
   // Always serve the React SPA for all non-static and non-api routes.
   app.get(['/', '/instructions', '/login', '/settings', '/signup', '/map/*'], (req, res) => {
     res.sendFile(path.join(__dirname, '../fe/index.html'));

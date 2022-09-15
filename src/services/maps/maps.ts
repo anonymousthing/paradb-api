@@ -9,6 +9,7 @@ import {
   serializeSubmitMapError,
   serializeSubmitMapResponse,
 } from 'paradb-api-schema';
+import * as path from 'path';
 import { getUserSession } from 'session/session';
 import {
   createMap,
@@ -54,6 +55,22 @@ export function createMapsRouter(mapsDir: string) {
       });
     }
     return res.send(Buffer.from(serializeGetMapResponse({ success: true, map: result.value })));
+  });
+
+  function sanitizeForDownload(filename: string) {
+    return filename.replace(/[^a-z0-9\-\(\)\[\]]/gi, '_');
+  }
+
+  mapsRouter.get('/:mapId/download', async (req, res: Response) => {
+    const id = req.params.mapId;
+    const result = await getMap(id);
+    if (result.success === false) {
+      return res.status(404).send('Map not found');
+    }
+    return res.download(
+      path.resolve(mapsDir, `${result.value.id}.zip`),
+      `${sanitizeForDownload(result.value.title)}.zip`,
+    );
   });
 
   mapsRouter.post('/:mapId/delete', guardAuth, async (req: Request, res: Response<Buffer, {}>) => {
