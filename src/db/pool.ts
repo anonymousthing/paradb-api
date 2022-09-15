@@ -15,6 +15,10 @@ export async function initPool(envVars: EnvVars) {
       password: envVars.pgPassword,
     });
     db.pool.on('error', err => console.error(err));
+
+    // Quickly test connection to check that DB is running
+    const client = await db.pool.connect();
+    client.release();
   } catch (e) {
     throw new Error('Could not connect to database, is it running?');
   }
