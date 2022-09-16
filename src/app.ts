@@ -44,7 +44,7 @@ export function createServer(envVars: EnvVars) {
   app.use('/favicon.png', (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')));
   // Serve static map data (cover art images). Note that the actual map downloads are handled via the map API /download
   // route instead.
-  app.use('/static/map_data/:mapId/:coverFile', (req, res) => {
+  app.use('/covers/:mapId/:coverFile', (req, res) => {
     const { mapId, coverFile } = req.params;
     return res.sendFile(path.resolve(envVars.mapsDir, mapId, coverFile));
   });
