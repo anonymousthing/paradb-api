@@ -39,9 +39,12 @@ export function createServer(envVars: EnvVars) {
   const apiRouter = createApiRouter(envVars.mapsDir);
   app.use('/api', apiRouter);
 
-  // Serve static assets
+  // Serve static assets (JS, CSS)
   app.use('/static', express.static(path.join(__dirname, '../fe/')));
   app.use('/favicon.png', (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')));
+  // Serve static map data (cover art images). Note that the actual map downloads are handled via the map API /download
+  // route instead.
+  app.use(/\/static\/map_data\/.*(png|jpg|webp|gif)$/, express.static(envVars.mapsDir));
   // Always serve the React SPA for all non-static and non-api routes.
   app.get(['/', '/instructions', '/login', '/settings', '/signup', '/map/*'], (req, res) => {
     res.sendFile(path.join(__dirname, '../fe/index.html'));
