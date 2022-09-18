@@ -124,14 +124,17 @@ export const enum DeleteMapError {
 export async function deleteMap(id: string): PromisedResult<undefined, DbError | DeleteMapError> {
   const pool = getPool();
   try {
-    await db.serializable(
-      pool,
-      client =>
-        Promise.all([
-          db.deletes('difficulties', { map_id: id }).run(client),
-          db.deletes('maps', { id }).run(client),
-        ]),
-    );
+    // Delete dependent tables / foreign keys first
+    await Promise.all([
+      db.deletes('difficulties', { map_id: id }).run(pool),
+      db.deletes('favorites', { map_id: id }).run(pool),
+    ]);
+    // Delete the map
+    // TODO: soft deletion
+    const deleted = await db.deletes('maps', { id }).run(pool);
+    if (deleted.length === 0) {
+      return { success: false, errors: [{ type: DeleteMapError.MISSING_MAP }] };
+    }
     return { success: true, value: undefined };
   } catch (e) {
     return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };

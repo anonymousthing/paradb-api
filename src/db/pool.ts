@@ -4,7 +4,7 @@ import pg from 'pg';
 // Connection details are pulled from env variables: https://node-postgres.com/features/connecting
 const db: { pool: pg.Pool | undefined } = { pool: undefined };
 
-export async function initPool(envVars: EnvVars) {
+export async function initPool(envVars: EnvVars, maxConnections?: number) {
   // Test DB
   try {
     db.pool = new pg.Pool({
@@ -13,6 +13,8 @@ export async function initPool(envVars: EnvVars) {
       database: envVars.pgDatabase,
       user: envVars.pgUser,
       password: envVars.pgPassword,
+      min: maxConnections,
+      max: maxConnections,
     });
     db.pool.on('error', err => console.error(err));
 

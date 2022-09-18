@@ -28,7 +28,7 @@ beforeAll(async () => {
     envVars = await createTestEnvVars();
     (global as any).server = createServer(envVars);
   }
-  await initPool(envVars);
+  await initPool(envVars, 1);
 });
 beforeEach(async () => {
   await getPool().query('BEGIN');
