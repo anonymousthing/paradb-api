@@ -75,8 +75,9 @@ export function createMapsRouter(mapsDir: string) {
     }
     const filename = sanitizeForDownload(result.value.title);
     return res
-      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
-      .redirect(`https://paradb-data.kumo.dev/file/paradb-maps/maps/${result.value.id}.zip`);
+      .redirect(
+        `https://paradb-data.kumo.dev/file/paradb-maps/maps/${result.value.id}.zip?title=${filename}.zip`,
+      );
   });
 
   mapsRouter.post('/:mapId/delete', guardAuth, async (req: Request, res: Response<Buffer, {}>) => {
