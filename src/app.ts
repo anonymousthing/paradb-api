@@ -2,14 +2,15 @@ import * as Sentry from '@sentry/node';
 import { contentType, createApiRouter } from 'api/api';
 import cookieParser from 'cookie-parser';
 import session from 'cookie-session';
-import { EnvVars } from 'env';
+import { EnvVars, getEnvVars } from 'env';
 import express from 'express';
 import { Request, Response } from 'express';
 import passport from 'passport';
 import path from 'path';
 import { installSession } from 'session/session';
 
-export function createServer(envVars: EnvVars) {
+export function createServer() {
+  const envVars = getEnvVars();
   const app = express();
 
   installSession();

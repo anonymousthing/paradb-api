@@ -11,6 +11,7 @@ import {
   serializeSubmitMapResponse,
 } from 'paradb-api-schema';
 import * as path from 'path';
+import { S3Error } from 'services/maps/s3_handler';
 import { getUserSession } from 'session/session';
 import {
   createMap,
@@ -72,10 +73,10 @@ export function createMapsRouter(mapsDir: string) {
     if (result.success === false) {
       return res.status(404).send('Map not found');
     }
-    return res.download(
-      path.resolve(mapsDir, `${result.value.id}.zip`),
-      `${sanitizeForDownload(result.value.title)}.zip`,
-    );
+    const filename = sanitizeForDownload(result.value.title);
+    return res
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .redirect(`https://paradb-data.kumo.dev/file/paradb-maps/maps/${result.value.id}.zip`);
   });
 
   mapsRouter.post('/:mapId/delete', guardAuth, async (req: Request, res: Response<Buffer, {}>) => {
@@ -152,9 +153,10 @@ export function createMapsRouter(mapsDir: string) {
 const internalError: [number, string] = [500, 'Could not submit map'];
 // dprint-ignore
 const submitErrorMap: Record<
-  DbError | CreateMapError | ValidateMapError | ValidateMapDifficultyError,
+  S3Error | DbError | CreateMapError | ValidateMapError | ValidateMapDifficultyError,
   [number, string]
 > = {
+  [S3Error.S3_WRITE_ERROR]: internalError,
   [DbError.UNKNOWN_DB_ERROR]: internalError,
   [CreateMapError.TOO_MANY_ID_GEN_ATTEMPTS]: internalError,
   [ValidateMapError.INCORRECT_FOLDER_NAME]: [400, 'The top-level folder name needs to match the names of the rlrr files'],

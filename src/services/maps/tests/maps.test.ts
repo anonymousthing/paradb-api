@@ -1,3 +1,6 @@
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { mockClient } from 'aws-sdk-client-mock';
+import 'aws-sdk-client-mock-jest';
 import * as fs from 'fs/promises';
 import { testAuthenticate, testPost } from 'jest_helpers';
 import { deserializeSubmitMapResponse, serializeSubmitMapRequest } from 'paradb-api-schema';
@@ -13,13 +16,23 @@ describe('maps handler', () => {
   };
 
   it('allows users to submit maps', async () => {
+    const s3Mock = mockClient(S3Client);
+    s3Mock.on(PutObjectCommand).resolves({});
+
     const resp = await testMapUpload('files/Test_valid.zip');
     expect(resp).toEqual({ success: true, id: expect.stringMatching(/^M[0-9A-F]{6}$/) });
+
+    expect(s3Mock).toHaveReceivedCommandTimes(PutObjectCommand, 1);
   });
 
   it('allows maps that have a different folder name to the song title, as long as it matches the rlrr files', async () => {
+    const s3Mock = mockClient(S3Client);
+    s3Mock.on(PutObjectCommand).resolves({});
+
     const resp = await testMapUpload('files/Test_valid_different_folder_name.zip');
     expect(resp).toEqual({ success: true, id: expect.stringMatching(/^M[0-9A-F]{6}$/) });
+
+    expect(s3Mock).toHaveReceivedCommandTimes(PutObjectCommand, 1);
   });
 
   describe('fails when', () => {

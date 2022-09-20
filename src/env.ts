@@ -10,9 +10,20 @@ export type EnvVars = {
   sentryDsn: string,
   sentryEnvironment: string,
   cookieSecret: string,
+  s3Endpoint: string,
+  s3Region: string,
+  s3AccessKeyId: string,
+  s3AccessKeySecret: string,
+  s3MapsBucket: string,
 };
 
-export function initEnvVars() {
+/**
+ * Retrieves and validates the environment variables.
+ * This is global and is okay to call from any once-off install method, but should not be on any hot
+ * paths (api route handlers, etc) as it does an fs.access call to validate that the maps directory
+ * exists.
+ */
+export function getEnvVars() {
   const _envVars: { [K in keyof EnvVars]: EnvVars[K] | undefined } = {
     pgHost: process.env.PGHOST,
     pgPort: Number(process.env.PGPORT || undefined),
@@ -23,6 +34,11 @@ export function initEnvVars() {
     sentryDsn: process.env.SENTRY_DSN,
     sentryEnvironment: process.env.SENTRY_ENV,
     cookieSecret: process.env.COOKIE_SECRET,
+    s3Endpoint: process.env.S3_ENDPOINT,
+    s3Region: process.env.S3_REGION,
+    s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,
+    s3AccessKeySecret: process.env.S3_ACCESS_KEY_SECRET,
+    s3MapsBucket: process.env.S3_MAPS_BUCKET,
   };
   let fail = false;
   for (const [key, value] of Object.entries(_envVars)) {

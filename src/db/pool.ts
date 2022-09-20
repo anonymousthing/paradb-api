@@ -1,11 +1,12 @@
-import { EnvVars } from 'env';
+import { EnvVars, getEnvVars } from 'env';
 import pg from 'pg';
 
 // Connection details are pulled from env variables: https://node-postgres.com/features/connecting
 const db: { pool: pg.Pool | undefined } = { pool: undefined };
 
-export async function initPool(envVars: EnvVars, maxConnections?: number) {
+export async function initPool(maxConnections?: number) {
   // Test DB
+  const envVars = getEnvVars();
   try {
     db.pool = new pg.Pool({
       host: envVars.pgHost,

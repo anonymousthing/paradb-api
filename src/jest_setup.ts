@@ -1,34 +1,34 @@
 import { createServer } from 'app';
 import { getPool, initPool } from 'db/pool';
-import { EnvVars } from 'env';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
-let envVars: EnvVars | undefined = undefined;
-let tmpMapsDir: string;
-
-async function createTestEnvVars() {
-  tmpMapsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'paradb_test_'));
-  return {
-    pgHost: 'localhost',
-    pgPort: Number(process.env.PGPORT) || 5432,
-    pgDatabase: 'paradb_test',
-    pgUser: 'paradb_test',
-    pgPassword: '1234',
-    mapsDir: tmpMapsDir,
-    sentryDsn: '',
-    sentryEnvironment: 'test',
-    cookieSecret: 'catsaregreat',
-  };
-}
+let tmpMapsDir: string | undefined;
 
 beforeAll(async () => {
-  if (envVars == null) {
-    envVars = await createTestEnvVars();
-    (global as any).server = createServer(envVars);
+  if (tmpMapsDir == null) {
+    tmpMapsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'paradb_test_'));
+    process.env = {
+      ...process.env,
+      PGHOST: 'localhost',
+      PGPORT: process.env.PGPORT || '5432',
+      PGDATABASE: 'paradb_test',
+      PGUSER: 'paradb_test',
+      PGPASSWORD: '1234',
+      MAPS_DIR: tmpMapsDir,
+      SENTRY_DSN: 'sentryDsn',
+      SENTRY_ENV: 'sentryEnv',
+      COOKIE_SECRET: 'catsaregreat',
+      S3_ENDPOINT: 'https://test.example.com',
+      S3_REGION: 's3region',
+      S3_ACCESS_KEY_ID: 's3accessId',
+      S3_ACCESS_KEY_SECRET: 's3accessSecret',
+      S3_MAPS_BUCKET: 's3bucket',
+    };
+    (global as any).server = createServer();
   }
-  await initPool(envVars, 1);
+  await initPool(1);
 });
 beforeEach(async () => {
   await getPool().query('BEGIN');
@@ -38,7 +38,9 @@ afterEach(async () => {
 });
 afterAll(async () => {
   await getPool().end();
-  fs.rm(tmpMapsDir, { recursive: true, force: true });
+  if (tmpMapsDir) {
+    fs.rm(tmpMapsDir, { recursive: true, force: true });
+  }
 });
 
 global.console.info = jest.fn();

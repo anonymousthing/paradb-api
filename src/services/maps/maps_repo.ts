@@ -5,9 +5,9 @@ import { generateId, IdDomain } from 'db/id_gen';
 import { getPool } from 'db/pool';
 // @ts-ignore
 import * as encoding from 'encoding';
-import * as fs from 'fs/promises';
 import { PDMap } from 'paradb-api-schema';
 import path from 'path';
+import { S3Error, uploadFiles } from 'services/maps/s3_handler';
 import * as unzipper from 'unzipper';
 import * as db from 'zapatos/db';
 
@@ -152,7 +152,10 @@ export const enum CreateMapError {
 export async function createMap(
   mapsDir: string,
   opts: CreateMapOpts,
-): PromisedResult<PDMap, DbError | CreateMapError | ValidateMapError | ValidateMapDifficultyError> {
+): PromisedResult<
+  PDMap,
+  S3Error | DbError | CreateMapError | ValidateMapError | ValidateMapDifficultyError
+> {
   const pool = getPool();
   const id = await generateId(IdDomain.MAPS, async id => (await getMap(id)).success);
   if (id == null) {
@@ -225,8 +228,8 @@ export const enum ValidateMapError {
 async function storeFile(
   opts: { id: string, mapsDir: string, mapFile: ArrayBuffer },
 ): PromisedResult<
-  RawMap & { path: string } & Pick<PDMap, 'albumArt'>,
-  ValidateMapError | ValidateMapDifficultyError
+  RawMap & Pick<PDMap, 'albumArt'>,
+  S3Error | ValidateMapError | ValidateMapDifficultyError
 > {
   const buffer = Buffer.from(opts.mapFile);
   let map: unzipper.CentralDirectory;
@@ -252,12 +255,16 @@ async function storeFile(
   }
   const { title, artist, author, description, complexity, difficulties, albumArtFiles } =
     validatedResult.value;
-  const { mapFilePath, albumArt } = await writeMapFiles({
+  const uploadResult = await uploadFiles({
     id: opts.id,
     mapsDir: opts.mapsDir,
     buffer,
     albumArtFiles,
   });
+  if (!uploadResult.success) {
+    return uploadResult;
+  }
+
   return {
     success: true,
     value: {
@@ -267,8 +274,7 @@ async function storeFile(
       description,
       complexity,
       difficulties,
-      path: mapFilePath,
-      albumArt,
+      albumArt: uploadResult.value,
     },
   };
 }
@@ -356,33 +362,6 @@ export async function validateMapFiles(
         })),
       albumArtFiles,
     },
-  };
-}
-
-async function writeMapFiles(
-  opts: { id: string, mapsDir: string, buffer: Buffer, albumArtFiles: unzipper.File[] },
-) {
-  // Write it to the maps directory
-  const mapFilename = opts.id + '.zip';
-  const filepath = path.resolve(opts.mapsDir, mapFilename);
-  await fs.writeFile(filepath, opts.buffer);
-
-  // For now, write all of the album art files to the album art directory.
-  // TODO: display all of the album arts in the FE, e.g. in a carousel, or when selecting a difficulty
-  const albumArtFolderPath = path.resolve(opts.mapsDir, opts.id);
-  await fs.mkdir(albumArtFolderPath);
-  await Promise.all(opts.albumArtFiles.map(a => {
-    const albumArt = checkExists(a, 'albumArt');
-    const albumArtPath = path.resolve(albumArtFolderPath, path.basename(albumArt.path));
-    return albumArt.buffer().then(b => fs.writeFile(albumArtPath, b));
-  }));
-
-  return {
-    // All file paths persisted in the DB are relative to mapsDir
-    mapFilePath: mapFilename,
-    albumArt: opts.albumArtFiles.length > 0
-      ? path.basename(opts.albumArtFiles[0]!.path)
-      : undefined,
   };
 }
 
