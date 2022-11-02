@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 
+/** Keep in sync with the test env vars in `jest_setup.ts` */
 export type EnvVars = {
   pgHost: string,
   pgPort: number,
@@ -10,6 +11,7 @@ export type EnvVars = {
   sentryDsn: string,
   sentryEnvironment: string,
   cookieSecret: string,
+  publicS3BaseUrl: string,
   s3Endpoint: string,
   s3Region: string,
   s3AccessKeyId: string,
@@ -34,6 +36,7 @@ export function getEnvVars() {
     sentryDsn: process.env.SENTRY_DSN,
     sentryEnvironment: process.env.SENTRY_ENV,
     cookieSecret: process.env.COOKIE_SECRET,
+    publicS3BaseUrl: process.env.PUBLIC_S3_BASE_URL,
     s3Endpoint: process.env.S3_ENDPOINT,
     s3Region: process.env.S3_REGION,
     s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,

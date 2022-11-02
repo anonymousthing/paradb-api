@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node';
 import { contentType, createApiRouter } from 'api/api';
 import cookieParser from 'cookie-parser';
 import session from 'cookie-session';
-import { EnvVars, getEnvVars } from 'env';
+import { getEnvVars } from 'env';
 import express from 'express';
 import { Request, Response } from 'express';
 import passport from 'passport';
@@ -41,7 +41,7 @@ export function createServer() {
   app.use('/api', apiRouter);
 
   // Serve static assets (JS, CSS)
-  app.use('/static', express.static(path.join(__dirname, '../fe/')));
+  app.use('/static', express.static(path.join(__dirname, '../fe')));
   app.use('/favicon.png', (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')));
   // Serve static map data (cover art images). Note that the actual map downloads are handled via the map API /download
   // route instead.

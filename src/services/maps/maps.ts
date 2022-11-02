@@ -1,5 +1,6 @@
 import { error, guardAuth, handleAsyncErrors } from 'api/helpers';
 import { DbError } from 'db/helpers';
+import { getEnvVars } from 'env';
 import { Request, Response, Router } from 'express';
 import {
   deserializeSubmitMapRequest,
@@ -10,7 +11,6 @@ import {
   serializeSubmitMapError,
   serializeSubmitMapResponse,
 } from 'paradb-api-schema';
-import * as path from 'path';
 import { S3Error } from 'services/maps/s3_handler';
 import { getUserSession } from 'session/session';
 import {
@@ -26,6 +26,7 @@ import {
 
 export function createMapsRouter(mapsDir: string) {
   const mapsRouter = Router({ strict: true });
+  const envVars = getEnvVars();
 
   mapsRouter.get('/', async (req, res: Response<Buffer, {}>) => {
     const user = getUserSession(req, res, true);
@@ -76,7 +77,7 @@ export function createMapsRouter(mapsDir: string) {
     const filename = sanitizeForDownload(result.value.title);
     return res
       .redirect(
-        `https://paradb-data.kumo.dev/file/paradb-maps/maps/${result.value.id}.zip?title=${filename}.zip`,
+        `${envVars.publicS3BaseUrl}/${result.value.id}.zip?title=${filename}.zip`,
       );
   });
 

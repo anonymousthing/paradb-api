@@ -20,6 +20,7 @@ beforeAll(async () => {
       SENTRY_DSN: 'sentryDsn',
       SENTRY_ENV: 'sentryEnv',
       COOKIE_SECRET: 'catsaregreat',
+      PUBLIC_S3_BASE_URL: 'https://test.example.com',
       S3_ENDPOINT: 'https://test.example.com',
       S3_REGION: 's3region',
       S3_ACCESS_KEY_ID: 's3accessId',
