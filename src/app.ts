@@ -42,7 +42,7 @@ export function createServer() {
 
   // Serve static assets (JS, CSS)
   app.use('/static', express.static(path.join(__dirname, '../fe')));
-  app.use('/favicon.png', (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')));
+  app.use('/static/favicon.png', (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')));
   // Serve static map data (cover art images). Note that the actual map downloads are handled via the map API /download
   // route instead.
   app.use('/covers/:mapId/:coverFile', (req, res) => {
