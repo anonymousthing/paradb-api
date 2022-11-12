@@ -138,6 +138,21 @@ export async function createMapsRouter(mapsDir: string) {
     }
 
     const deleteResult = await deleteMap(id);
+    try {
+      await mapsIndex.deleteDocument(id);
+    } catch (e) {
+      return error({
+        res,
+        errorSerializer: serializeApiError,
+        errorBody: {},
+        statusCode: 500,
+        message: 'Could not update search index',
+        resultError: {
+          success: false,
+          errors: [{ type: 'search-index-error', internalMessage: JSON.stringify(e) }],
+        },
+      });
+    }
     if (deleteResult.success === false) {
       return error({
         res,
