@@ -17,6 +17,8 @@ export type EnvVars = {
   s3AccessKeyId: string,
   s3AccessKeySecret: string,
   s3MapsBucket: string,
+  meilisearchHost: string,
+  meilisearchKey: string,
 };
 
 /**
@@ -42,6 +44,8 @@ export function getEnvVars() {
     s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,
     s3AccessKeySecret: process.env.S3_ACCESS_KEY_SECRET,
     s3MapsBucket: process.env.S3_MAPS_BUCKET,
+    meilisearchHost: process.env.MEILISEARCH_HOST,
+    meilisearchKey: process.env.MEILISEARCH_KEY,
   };
   let fail = false;
   for (const [key, value] of Object.entries(_envVars)) {

@@ -9,7 +9,7 @@ const SERVER_PORT = 8080;
 
 async function main() {
   await initPool();
-  const app = createServer();
+  const app = await createServer();
   app.listen(SERVER_PORT, () => {
     console.info(`Listening on ${SERVER_PORT}`);
   });

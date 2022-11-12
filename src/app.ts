@@ -3,13 +3,12 @@ import { contentType, createApiRouter } from 'api/api';
 import cookieParser from 'cookie-parser';
 import session from 'cookie-session';
 import { getEnvVars } from 'env';
-import express from 'express';
-import { Request, Response } from 'express';
+import express, { Request, Response } from 'express';
 import passport from 'passport';
 import path from 'path';
 import { installSession } from 'session/session';
 
-export function createServer() {
+export async function createServer() {
   const envVars = getEnvVars();
   const app = express();
 
@@ -37,12 +36,15 @@ export function createServer() {
     next();
   });
 
-  const apiRouter = createApiRouter(envVars.mapsDir);
+  const apiRouter = await createApiRouter(envVars.mapsDir);
   app.use('/api', apiRouter);
 
   // Serve static assets (JS, CSS)
   app.use('/static', express.static(path.join(__dirname, '../fe')));
-  app.use('/static/favicon.png', (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')));
+  app.use(
+    '/static/favicon.png',
+    (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')),
+  );
   // Serve static map data (cover art images). Note that the actual map downloads are handled via the map API /download
   // route instead.
   app.use('/covers/:mapId/:coverFile', (req, res) => {
@@ -54,8 +56,9 @@ export function createServer() {
     res.sendFile(path.join(__dirname, '../fe/index.html'));
   });
   app.get('/logout', (req, res) => {
-    req.logout();
-    res.redirect('/');
+    req.logout(() => {
+      res.redirect('/');
+    });
   });
 
   app.use((error: any, req: Request, res: Response, next: () => void) => {

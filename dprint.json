@@ -8,10 +8,10 @@
     "preferSingleLine": true,
     "arrowFunction.useParentheses": "preferNone",
     "jsx.multiLineParens": "always",
-    "memberExpression.preferSingleLine": "false",
-    "memberExpression.linePerExpression": "true",
+    // "memberExpression.preferSingleLine": "false",
+    // "memberExpression.linePerExpression": "true",
     "typeLiteral.separatorKind": "comma",
-    "jsxElement.spaceBeforeSelfClosingTagSlash": false
+    "jsxSelfClosingElement.spaceBeforeSlash": false
   },
   "json": {
   },
@@ -22,7 +22,7 @@
     "src/zapatos"
   ],
   "plugins": [
-    "https://plugins.dprint.dev/typescript-0.65.1.wasm",
+    "https://plugins.dprint.dev/typescript-0.78.0.wasm",
     "https://plugins.dprint.dev/json-0.14.1.wasm"
   ]
 }

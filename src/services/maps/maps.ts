@@ -1,9 +1,12 @@
-import { error, guardAuth, handleAsyncErrors } from 'api/helpers';
+import { badRequest, error, getOffsetLimit, guardAuth, handleAsyncErrors } from 'api/helpers';
 import { DbError } from 'db/helpers';
 import { getEnvVars } from 'env';
 import { Request, Response, Router } from 'express';
+import { MeiliSearch } from 'meilisearch';
 import {
   deserializeSubmitMapRequest,
+  MapSortableAttributes,
+  mapSortableAttributes,
   serializeApiError,
   serializeDeleteMapResponse,
   serializeFindMapsResponse,
@@ -14,24 +17,52 @@ import {
 import { S3Error } from 'services/maps/s3_handler';
 import { getUserSession } from 'session/session';
 import {
+  convertToMeilisearchMap,
   createMap,
   CreateMapError,
   deleteMap,
-  findMaps,
   getMap,
   GetMapError,
+  MeilisearchMap,
+  searchMaps,
   ValidateMapDifficultyError,
   ValidateMapError,
 } from './maps_repo';
 
-export function createMapsRouter(mapsDir: string) {
+export async function createMapsRouter(mapsDir: string) {
   const mapsRouter = Router({ strict: true });
   const envVars = getEnvVars();
 
+  const meilisearch = new MeiliSearch({
+    host: envVars.meilisearchHost,
+    apiKey: envVars.meilisearchKey,
+  });
+  const mapsIndex = await meilisearch.getIndex<MeilisearchMap>('maps');
+
   mapsRouter.get('/', async (req, res: Response<Buffer, {}>) => {
+    const { query, sort: _sort, sortDirection: _sortDirection } = req.query;
+    if (_sort && !mapSortableAttributes.includes(_sort as MapSortableAttributes)) {
+      return badRequest(res, `Invalid sort column: ${_sort}`);
+    }
+    if (_sortDirection && !['asc', 'desc'].includes(_sortDirection as string)) {
+      return badRequest(res, `Invalid sort direction: ${_sortDirection}`);
+    }
+    const sort = _sort as MapSortableAttributes | undefined;
+    const sortDirection = _sortDirection as 'asc' | 'desc' | undefined;
+
+    const { offset, limit } = getOffsetLimit(req);
     const user = getUserSession(req, res, true);
     const userId = user?.id;
-    const result = await findMaps(undefined, userId);
+
+    const result = await searchMaps(mapsIndex, {
+      user: userId,
+      query: typeof query === 'string' ? query : '',
+      offset,
+      limit,
+      sort,
+      sortDirection,
+    });
+
     if (!result.success) {
       return error({
         res,
@@ -75,10 +106,7 @@ export function createMapsRouter(mapsDir: string) {
       return res.status(404).send('Map not found');
     }
     const filename = sanitizeForDownload(result.value.title);
-    return res
-      .redirect(
-        `${envVars.publicS3BaseUrl}/${result.value.id}.zip?title=${filename}.zip`,
-      );
+    return res.redirect(`${envVars.publicS3BaseUrl}/${result.value.id}.zip?title=${filename}.zip`);
   });
 
   mapsRouter.post('/:mapId/delete', guardAuth, async (req: Request, res: Response<Buffer, {}>) => {
@@ -141,6 +169,22 @@ export function createMapsRouter(mapsDir: string) {
           errorBody: {},
           message,
           resultError: result,
+        });
+      }
+      // Update search index
+      try {
+        await mapsIndex.addDocuments([convertToMeilisearchMap(result.value)], { primaryKey: 'id' });
+      } catch (e) {
+        return error({
+          res,
+          errorSerializer: serializeApiError,
+          errorBody: {},
+          statusCode: 500,
+          message: 'Could not update search index',
+          resultError: {
+            success: false,
+            errors: [{ type: 'search-index-error', internalMessage: JSON.stringify(e) }],
+          },
         });
       }
       return res.send(

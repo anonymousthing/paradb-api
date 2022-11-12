@@ -1,6 +1,6 @@
 import { ResultError } from 'base/result';
 import { Request, Response } from 'express';
-import { ApiError } from 'paradb-api-schema';
+import { ApiError, serializeApiError } from 'paradb-api-schema';
 import { getUserSession } from 'session/session';
 
 export const guardAuth = (req: Request, res: Response, next: () => void) => {
@@ -40,6 +40,16 @@ export function error<P, T extends ApiError & P, E extends string>(
   return res.status(statusCode).send(Buffer.from(errorSerializer(errorResponse)));
 }
 
+export function badRequest(res: Response<Buffer, any>, message: string) {
+  return error({
+    res,
+    statusCode: 400,
+    errorSerializer: serializeApiError,
+    message,
+    errorBody: {},
+  });
+}
+
 export const handleAsyncErrors = async (next: (e?: Error) => void, f: () => Promise<any>) => {
   try {
     await f();
@@ -47,3 +57,8 @@ export const handleAsyncErrors = async (next: (e?: Error) => void, f: () => Prom
     next(e as Error);
   }
 };
+
+export function getOffsetLimit(req: Request) {
+  const { offset, limit } = req.query;
+  return { offset: Number(offset) || 0, limit: Number(limit) || 20 };
+}

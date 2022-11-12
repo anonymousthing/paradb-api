@@ -76,7 +76,7 @@ export type SnakeCase<T> = {
     : T[K];
 };
 
-export function snakeCaseKeys<T>(data: T): SnakeCase<T> {
+export function snakeCaseKeys<T extends object>(data: T): SnakeCase<T> {
   return (_snakecaseKeys(data) as unknown) as SnakeCase<T>;
 }
 

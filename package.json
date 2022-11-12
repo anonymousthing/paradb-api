@@ -10,17 +10,17 @@
     "schema": "tools/update_schema.sh",
     "outage": "ts-node src/outage/index.ts",
     "migrate": "ts-node",
-    "pretest": "tools/pretest.sh",
-    "test": "yarn pretest && yarn jest",
-    "build": "tsc"
+    "typecheck": "tsc --noEmit",
+    "test": "yarn typecheck && tools/test.sh"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.0",
     "@types/cookie-parser": "^1.4.2",
     "@types/cookie-session": "^2.0.42",
     "@types/express": "^4.17.12",
+    "@types/express-serve-static-core": "^4.17.12",
     "@types/jest": "^28.1.6",
-    "@types/node": "^15.6.1",
+    "@types/node": "^16.0.0",
     "@types/passport": "^1.0.6",
     "@types/pg": "^8.6.0",
     "@types/supertest": "^2.0.12",
@@ -31,9 +31,7 @@
     "nodemon": "^2.0.7",
     "supertest": "^6.2.4",
     "ts-jest": "^28.0.7",
-    "ts-node": "^10.0.0",
-    "tsconfig-paths": "^3.9.0",
-    "typescript": "^4.3.2"
+    "tsconfig-paths": "^3.9.0"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.171.0",
@@ -46,12 +44,15 @@
     "cookie-session": "^1.4.0",
     "dotenv": "^10.0.0",
     "encoding": "^0.1.13",
-    "express": "^4.17.1",
+    "express": "^4.17.12",
+    "meilisearch": "file:../meilisearch-js",
     "paradb-api-schema": "file:../paradb-api-schema",
     "passport": "^0.4.1",
     "passport-local": "^1.0.0",
     "pg": "^8.6.0",
     "snakecase-keys": "^4.0.2",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.1-beta",
     "unzipper": "^0.10.11",
     "zapatos": "^4.0.3",
     "zxcvbn": "^4.4.2"

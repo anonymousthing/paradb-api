@@ -2,7 +2,8 @@ import { initPool } from 'db/pool';
 import path from 'path';
 
 export const setupMigration = async () => {
-  require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+  const customEnv = process.env.ENV_FILE;
+  require('dotenv').config({ path: customEnv || path.resolve(__dirname, '../../.env') });
   await initPool();
 };
 

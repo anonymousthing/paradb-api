@@ -13,7 +13,7 @@ export const contentType = process.env.NODE_ENV === 'test'
   ? 'application/octet-stream'
   : 'application/x-protobuf';
 
-export function createApiRouter(mapsDir: string) {
+export async function createApiRouter(mapsDir: string) {
   const apiRouter = express.Router({ strict: true });
   apiRouter.use((req, res, next) => {
     res.contentType(contentType);
@@ -21,7 +21,7 @@ export function createApiRouter(mapsDir: string) {
   });
 
   // Logged out routes
-  const mapsRouter = createMapsRouter(mapsDir);
+  const mapsRouter = await createMapsRouter(mapsDir);
   apiRouter.use('/maps', mapsRouter);
 
   // Logged in routes

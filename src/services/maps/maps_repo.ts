@@ -5,12 +5,25 @@ import { generateId, IdDomain } from 'db/id_gen';
 import { getPool } from 'db/pool';
 // @ts-ignore
 import * as encoding from 'encoding';
-import { PDMap } from 'paradb-api-schema';
+import { Index } from 'meilisearch';
+import { MapSortableAttributes, PDMap } from 'paradb-api-schema';
 import path from 'path';
 import { S3Error, uploadFiles } from 'services/maps/s3_handler';
 import * as unzipper from 'unzipper';
 import * as db from 'zapatos/db';
 
+const exists = <T>(t: T | undefined): t is NonNullable<T> => !!t;
+
+export type MeilisearchMap = {
+  id: string,
+  title: string,
+  artist: string,
+  author: string,
+  uploader: string,
+  description: string,
+  submissionDate: number,
+  favorites: number,
+};
 export type FindMapsBy = { by: 'id', ids: string[] };
 
 // TODO: add search parameters to findMaps
@@ -20,19 +33,18 @@ export async function findMaps(by?: FindMapsBy, userId?: string): PromisedResult
   const whereable = by ? { id: db.conditions.isIn(by.ids) } : db.all;
 
   try {
-    const maps = await db
-      .select('maps', whereable, {
-        lateral: {
-          difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
-            columns: ['difficulty', 'difficulty_name'],
-          }),
-          favorites: db.count('favorites', { map_id: db.parent('id') }),
-          ...(userId
-            ? {
-              userProjection: db.selectOne('favorites', {
-                map_id: db.parent('id'),
-                user_id: userId,
-              }, {
+    const maps = await db.select('maps', whereable, {
+      lateral: {
+        difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
+          columns: ['difficulty', 'difficulty_name'],
+        }),
+        favorites: db.count('favorites', { map_id: db.parent('id') }),
+        ...(userId
+          ? {
+            userProjection: db.selectOne(
+              'favorites',
+              { map_id: db.parent('id'), user_id: userId },
+              {
                 columns: [],
                 lateral: {
                   isFavorited: db.selectOne('favorites', {
@@ -40,38 +52,78 @@ export async function findMaps(by?: FindMapsBy, userId?: string): PromisedResult
                     user_id: userId,
                   }, { alias: 'favorites2' }),
                 },
-              }),
-            }
-            : {}),
-        },
-        columns: [
-          'id',
-          'submission_date',
-          'title',
-          'artist',
-          'author',
-          'uploader',
-          'description',
-          'complexity',
-          'album_art',
-        ],
-        order: { by: 'title', direction: 'ASC' },
-      })
-      .run(pool);
+              },
+            ),
+          }
+          : {}),
+      },
+      columns: [
+        'id',
+        'submission_date',
+        'title',
+        'artist',
+        'author',
+        'uploader',
+        'description',
+        'complexity',
+        'album_art',
+      ],
+      order: { by: 'title', direction: 'ASC' },
+    }).run(pool);
     return {
       success: true,
       value: maps.map(m => ({
         ...camelCaseKeys(m),
-        userProjection: {
-          isFavorited: !!m
-            .userProjection
-            ?.isFavorited,
-        },
+        userProjection: { isFavorited: !!m.userProjection?.isFavorited },
       })),
     };
   } catch (e) {
     return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
+}
+
+/** User id is used for projections (favorites, etc) */
+export async function searchMaps(
+  index: Index<MeilisearchMap>,
+  searchOptions: {
+    user?: string,
+    query: string,
+    sort?: MapSortableAttributes,
+    sortDirection?: 'asc' | 'desc',
+    offset: number,
+    limit: number,
+  },
+): PromisedResult<PDMap[], DbError> {
+  const { user, query, offset, limit, sort, sortDirection } = searchOptions;
+  const response = await index.search<MeilisearchMap>(query, {
+    offset,
+    limit,
+    sort: sort && sortDirection ? [`${sort}:${sortDirection}`] : undefined,
+  });
+  const searchResults = response.hits;
+  const ids = searchResults.map(r => r.id);
+
+  const mapsResult = await findMaps({ by: 'id', ids }, user);
+  if (!mapsResult.success) {
+    return mapsResult;
+  }
+
+  const maps = new Map(mapsResult.value.map(m => [m.id, m]));
+  return { success: true, value: searchResults.map(m => maps.get(m.id)).filter(exists) };
+}
+
+export function convertToMeilisearchMap(map: PDMap): MeilisearchMap {
+  const { id, title, artist, author, uploader, description, submissionDate, favorites } = map;
+  return {
+    id,
+    title,
+    artist,
+    author: author || '',
+    uploader,
+    description: description || '',
+    submissionDate: Number(new Date(submissionDate)),
+    favorites,
+  };
 }
 
 export const enum GetMapError {
@@ -81,35 +133,32 @@ export const enum GetMapError {
 export async function getMap(mapId: string, userId?: string): PromisedResult<PDMap, GetMapError> {
   const pool = getPool();
   try {
-    const map = await db
-      .selectOne('maps', { id: mapId }, {
-        lateral: {
-          difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
-            columns: ['difficulty', 'difficulty_name'],
-          }),
-          favorites: db.count('favorites', { map_id: db.parent('id') }),
-        },
-        columns: [
-          'id',
-          'submission_date',
-          'title',
-          'artist',
-          'author',
-          'uploader',
-          'description',
-          'complexity',
-          'album_art',
-        ],
-      })
-      .run(pool);
+    const map = await db.selectOne('maps', { id: mapId }, {
+      lateral: {
+        difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
+          columns: ['difficulty', 'difficulty_name'],
+        }),
+        favorites: db.count('favorites', { map_id: db.parent('id') }),
+      },
+      columns: [
+        'id',
+        'submission_date',
+        'title',
+        'artist',
+        'author',
+        'uploader',
+        'description',
+        'complexity',
+        'album_art',
+      ],
+    }).run(pool);
     if (map == null) {
       return { success: false, errors: [{ type: GetMapError.MISSING_MAP }] };
     }
     const userProjection = userId
       ? {
-        isFavorited: !!(await db
-          .selectOne('favorites', { map_id: mapId, user_id: userId })
-          .run(pool)),
+        isFavorited:
+          !!(await db.selectOne('favorites', { map_id: mapId, user_id: userId }).run(pool)),
       }
       : undefined;
     return { success: true, value: { ...camelCaseKeys(map), userProjection } };
@@ -171,34 +220,30 @@ export async function createMap(
 
   const now = new Date();
   try {
-    const insertedMap = await db
-      .insert(
-        'maps',
+    const insertedMap = await db.insert(
+      'maps',
+      snakeCaseKeys({
+        id,
+        submissionDate: now,
+        title: map.title,
+        artist: map.artist,
+        author: map.author || null,
+        uploader: opts.uploader,
+        albumArt: map.albumArt || null,
+        description: map.description || null,
+        complexity: checkExists(map.complexity, 'complexity'),
+      }),
+    ).run(pool);
+    const insertedDifficulties = await db.insert(
+      'difficulties',
+      map.difficulties.map(d =>
         snakeCaseKeys({
-          id,
-          submissionDate: now,
-          title: map.title,
-          artist: map.artist,
-          author: map.author || null,
-          uploader: opts.uploader,
-          albumArt: map.albumArt || null,
-          description: map.description || null,
-          complexity: checkExists(map.complexity, 'complexity'),
-        }),
-      )
-      .run(pool);
-    const insertedDifficulties = await db
-      .insert(
-        'difficulties',
-        map.difficulties.map(d =>
-          snakeCaseKeys({
-            mapId: id,
-            difficulty: d.difficulty || null,
-            difficultyName: checkExists(d.difficultyName, 'difficultyName'),
-          })
-        ),
-      )
-      .run(pool);
+          mapId: id,
+          difficulty: d.difficulty || null,
+          difficultyName: checkExists(d.difficultyName, 'difficultyName'),
+        })
+      ),
+    ).run(pool);
     return {
       success: true,
       value: camelCaseKeys({
@@ -335,10 +380,9 @@ export async function validateMapFiles(
     }
   }
 
-  const albumArtFiles = validDifficultyResults
-    .map(v => v.value.albumArt)
-    .filter((s): s is string => s != null)
-    .map(fn => opts.mapFiles.find(f => path.basename(f.path) === fn));
+  const albumArtFiles = validDifficultyResults.map(v => v.value.albumArt).filter((s): s is string =>
+    s != null
+  ).map(fn => opts.mapFiles.find(f => path.basename(f.path) === fn));
 
   if (!allExists(albumArtFiles)) {
     return { success: false, errors: [{ type: ValidateMapError.MISSING_ALBUM_ART }] };
@@ -352,14 +396,13 @@ export async function validateMapFiles(
       author: validDifficultyResults[0].value.author,
       description: validDifficultyResults[0].value.description,
       complexity: validDifficultyResults[0].value.complexity,
-      difficulties: validDifficultyResults
-        .map(d => ({
-          // Currently, custom difficulty values are not supported in the rlrr format. Persist them as
-          // undefined for now, and look into generating a difficulty level later based on the map
-          // content.
-          difficulty: undefined,
-          difficultyName: d.value.difficultyName,
-        })),
+      difficulties: validDifficultyResults.map(d => ({
+        // Currently, custom difficulty values are not supported in the rlrr format. Persist them as
+        // undefined for now, and look into generating a difficulty level later based on the map
+        // content.
+        difficulty: undefined,
+        difficultyName: d.value.difficultyName,
+      })),
       albumArtFiles,
     },
   };
