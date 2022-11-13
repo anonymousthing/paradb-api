@@ -1,5 +1,8 @@
+import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { mockClient } from 'aws-sdk-client-mock';
+import 'aws-sdk-client-mock-jest';
 import { _unwrap } from 'base/result';
-import { deleteMap, findMaps, getMap, GetMapError } from 'services/maps/maps_repo';
+import { deleteMap, getMap, GetMapError } from 'services/maps/maps_repo';
 import { setFavorites } from 'services/users/favorites_repo';
 import { createUser } from 'services/users/users_repo';
 
@@ -15,6 +18,9 @@ describe('maps repo', () => {
   });
 
   it('can delete a map', async () => {
+    const s3Mock = mockClient(S3Client);
+    s3Mock.on(DeleteObjectCommand).resolves({});
+
     const deleteResult = await deleteMap('2');
     expect(deleteResult.success).toBe(true);
 
@@ -23,6 +29,12 @@ describe('maps repo', () => {
     expect((getResult as Extract<typeof getResult, { success: false }>).errors).toEqual([{
       type: GetMapError.MISSING_MAP,
     }]);
+
+    expect(s3Mock).toHaveReceivedCommandTimes(DeleteObjectCommand, 1);
+    expect(s3Mock).toHaveReceivedCommandWith(DeleteObjectCommand, {
+      Bucket: 's3bucket',
+      Key: 'maps/2.zip',
+    });
   });
 
   it('can delete a map that has favorites', async () => {

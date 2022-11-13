@@ -8,7 +8,7 @@ import * as encoding from 'encoding';
 import { Index } from 'meilisearch';
 import { MapSortableAttributes, PDMap } from 'paradb-api-schema';
 import path from 'path';
-import { S3Error, uploadFiles } from 'services/maps/s3_handler';
+import { deleteFiles, S3Error, uploadFiles } from 'services/maps/s3_handler';
 import * as unzipper from 'unzipper';
 import * as db from 'zapatos/db';
 
@@ -170,7 +170,9 @@ export async function getMap(mapId: string, userId?: string): PromisedResult<PDM
 export const enum DeleteMapError {
   MISSING_MAP = 'missing_map',
 }
-export async function deleteMap(id: string): PromisedResult<undefined, DbError | DeleteMapError> {
+export async function deleteMap(
+  id: string,
+): PromisedResult<undefined, DbError | DeleteMapError | S3Error> {
   const pool = getPool();
   try {
     // Delete dependent tables / foreign keys first
@@ -184,7 +186,7 @@ export async function deleteMap(id: string): PromisedResult<undefined, DbError |
     if (deleted.length === 0) {
       return { success: false, errors: [{ type: DeleteMapError.MISSING_MAP }] };
     }
-    return { success: true, value: undefined };
+    return deleteFiles({ id });
   } catch (e) {
     return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }

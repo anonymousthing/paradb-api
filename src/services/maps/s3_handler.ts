@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { checkExists } from 'base/conditions';
 import { Result } from 'base/result';
 import { getEnvVars } from 'env';
@@ -10,6 +10,7 @@ let s3: { client: S3Client, bucket: string } | undefined;
 
 export const enum S3Error {
   S3_WRITE_ERROR = 's3_write_error',
+  S3_DELETE_ERROR = 's3_delete_error',
 }
 
 function getS3Client() {
@@ -72,4 +73,17 @@ export async function uploadFiles(
     // All file paths persisted in the DB are relative to mapsDir
     value: opts.albumArtFiles.length > 0 ? path.basename(opts.albumArtFiles[0]!.path) : undefined,
   };
+}
+
+export async function deleteFiles(opts: { id: string }): Promise<Result<undefined, S3Error>> {
+  try {
+    const s3 = getS3Client();
+    await s3.client.send(
+      new DeleteObjectCommand({ Bucket: s3.bucket, Key: `maps/${opts.id}.zip` }),
+    );
+  } catch (e) {
+    return { success: false, errors: [{ type: S3Error.S3_DELETE_ERROR }] };
+  }
+
+  return { success: true, value: undefined };
 }

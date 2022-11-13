@@ -218,6 +218,7 @@ const submitErrorMap: Record<
   [number, string]
 > = {
   [S3Error.S3_WRITE_ERROR]: internalError,
+  [S3Error.S3_DELETE_ERROR]: internalError,
   [DbError.UNKNOWN_DB_ERROR]: internalError,
   [CreateMapError.TOO_MANY_ID_GEN_ATTEMPTS]: internalError,
   [ValidateMapError.INCORRECT_FOLDER_NAME]: [400, 'The top-level folder name needs to match the names of the rlrr files'],
