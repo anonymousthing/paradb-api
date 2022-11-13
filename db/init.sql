@@ -1,4 +1,5 @@
 CREATE TABLE maps (
+  _id serial,
   id varchar(16) primary key,
   submission_date timestamp not null,
   title varchar(256) not null,
@@ -11,12 +12,14 @@ CREATE TABLE maps (
 );
 
 CREATE TABLE difficulties (
+  _id serial,
   map_id varchar(16) references maps (id) not null,
   difficulty int,
   difficulty_name varchar(256)
 );
 
 CREATE TABLE users (
+  _id serial,
   id varchar(16) primary key,
   creation_date timestamp not null,
   account_status char not null,
@@ -30,6 +33,7 @@ CREATE INDEX idx_users_username ON users (lower(username));
 CREATE INDEX idx_users_email ON users (lower(email));
 
 CREATE TABLE favorites (
+  _id serial,
   map_id varchar(16) references maps (id) not null,
   user_id varchar(16) references users (id) not null,
   favorited_date timestamp not null,
