@@ -12,7 +12,7 @@
     "migrate": "node -r esbuild-runner/register",
     "typecheck": "tsc --noEmit",
     "test": "yarn typecheck && tools/test.sh",
-    "build": "esbuild src/index.ts --platform=node --bundle --minify --outfile=dist/index.mjs --external:./node_modules/* --format=esm"
+    "build": "esbuild src/index.ts --platform=node --bundle --outfile=dist/index.mjs --external:./node_modules/* --format=esm"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.0",
