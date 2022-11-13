@@ -1,4 +1,5 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
 import * as Sentry from '@sentry/node';
 import { createServer } from 'app';

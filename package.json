@@ -8,10 +8,11 @@
   "scripts": {
     "start": "nodemon src/index.ts",
     "schema": "tools/update_schema.sh",
-    "outage": "ts-node --transpileOnly src/outage/index.ts",
-    "migrate": "ts-node",
+    "outage": "node -r esbuild-runner/register src/outage/index.ts",
+    "migrate": "node -r esbuild-runner/register",
     "typecheck": "tsc --noEmit",
-    "test": "yarn typecheck && tools/test.sh"
+    "test": "yarn typecheck && tools/test.sh",
+    "build": "esbuild src/index.ts --platform=node --bundle --minify --outfile=dist/index.mjs --external:./node_modules/* --format=esm"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.0",
@@ -27,6 +28,7 @@
     "@types/unzipper": "^0.10.4",
     "aws-sdk-client-mock": "^2.0.0",
     "aws-sdk-client-mock-jest": "^2.0.0",
+    "esbuild": "^0.15.13",
     "jest": "^28.1.3",
     "nodemon": "^2.0.7",
     "supertest": "^6.2.4",

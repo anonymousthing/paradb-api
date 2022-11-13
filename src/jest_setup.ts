@@ -1,12 +1,13 @@
 import { createServer } from 'app';
 import { getPool, initPool } from 'db/pool';
+import dotenv from 'dotenv';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
 let tmpMapsDir: string | undefined;
 
-require('dotenv').config({ path: process.env.ENV_FILE });
+dotenv.config({ path: process.env.ENV_FILE });
 
 beforeAll(async () => {
   if (tmpMapsDir == null) {

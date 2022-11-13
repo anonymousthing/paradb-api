@@ -40,10 +40,10 @@ export async function createServer() {
   app.use('/api', apiRouter);
 
   // Serve static assets (JS, CSS)
-  app.use('/static', express.static(path.join(__dirname, '../fe')));
+  app.use('/static', express.static(envVars.frontendAssets));
   app.use(
     '/static/favicon.png',
-    (_, res) => res.sendFile(path.join(__dirname, '../static/favicon.png')),
+    (_, res) => res.sendFile(path.join(envVars.staticAssets, 'favicon.png')),
   );
   // Serve static map data (cover art images). Note that the actual map downloads are handled via the map API /download
   // route instead.
@@ -53,7 +53,7 @@ export async function createServer() {
   });
   // Always serve the React SPA for all non-static and non-api routes.
   app.get(['/', '/instructions', '/login', '/settings', '/signup', '/map/*'], (req, res) => {
-    res.sendFile(path.join(__dirname, '../fe/index.html'));
+    res.sendFile(path.join(envVars.frontendAssets, 'index.html'));
   });
   app.get('/logout', (req, res) => {
     req.logout(() => {
@@ -67,6 +67,7 @@ export async function createServer() {
     ) {
       Sentry.captureException(error);
     }
+    console.error(error);
     res.status(500).send({ error: 'internal server error' });
   });
   return app;

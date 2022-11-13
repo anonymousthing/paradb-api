@@ -19,6 +19,8 @@ export type EnvVars = {
   s3MapsBucket: string,
   meilisearchHost: string,
   meilisearchKey: string,
+  frontendAssets: string,
+  staticAssets: string,
 };
 
 /**
@@ -46,6 +48,8 @@ export function getEnvVars() {
     s3MapsBucket: process.env.S3_MAPS_BUCKET,
     meilisearchHost: process.env.MEILISEARCH_HOST,
     meilisearchKey: process.env.MEILISEARCH_KEY,
+    frontendAssets: process.env.FRONTEND_ASSETS,
+    staticAssets: process.env.STATIC_ASSETS,
   };
   let fail = false;
   for (const [key, value] of Object.entries(_envVars)) {
