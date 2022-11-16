@@ -38,15 +38,25 @@ export const testGet = async <Res>(
 /**
  * Signs up as a test user and returns the Cookie header
  */
+export const testUser = {
+  username: 'test',
+  email: 'test@test.com',
+  password: 'Alive-Parabola7-Stump',
+};
+export const testUser2 = {
+  username: 'test2',
+  email: 'test2@test.com',
+  password: 'Sessions-Blurb-Dealing1',
+};
 export const testAuthenticate = async () => {
   const resp = await testServer()
     .post('/api/users/signup')
     .type('application/octet-stream')
     .send(
       serializeSignupRequest({
-        email: 'test@test.com',
-        password: 'Alive-Parabola7-Stump',
-        username: 'test',
+        email: testUser.email,
+        password: testUser.password,
+        username: testUser.username,
       }),
     );
 

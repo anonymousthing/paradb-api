@@ -4045,7 +4045,7 @@ packet-reader@1.0.0:
 "paradb-api-schema@file:../paradb-api-schema":
   version "1.0.0"
   dependencies:
-    schema-bob "https://github.com/anonymousthing/schema-bob"
+    schema-bob "https://github.com/bitnimble/schema-bob"
 
 parse-json@^5.2.0:
   version "5.2.0"
@@ -4371,9 +4371,9 @@ safe-buffer@~5.1.0, safe-buffer@~5.1.1:
   resolved "https://registry.yarnpkg.com/safer-buffer/-/safer-buffer-2.1.2.tgz#44fa161b0187b9549dd84bb91802f9bd8385cd6a"
   integrity sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==
 
-"schema-bob@https://github.com/anonymousthing/schema-bob":
+"schema-bob@https://github.com/bitnimble/schema-bob":
   version "1.0.0"
-  resolved "https://github.com/anonymousthing/schema-bob#2bba10a00d1912837593e8012bf061e48f670299"
+  resolved "https://github.com/bitnimble/schema-bob#991c4b1c446950f2eb44a7bcc17ee0d5c8af1dff"
 
 semver@7.x, semver@^7.3.5, semver@^7.3.8:
   version "7.3.8"

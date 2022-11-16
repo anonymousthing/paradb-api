@@ -179,7 +179,7 @@ export const enum DeleteMapError {
   MISSING_MAP = 'missing_map',
 }
 export async function deleteMap(
-  id: string,
+  { id, mapsDir }: { id: string, mapsDir: string },
 ): PromisedResult<undefined, DbError | DeleteMapError | S3Error> {
   const pool = getPool();
   try {
@@ -194,13 +194,15 @@ export async function deleteMap(
     if (deleted.length === 0) {
       return { success: false, errors: [{ type: DeleteMapError.MISSING_MAP }] };
     }
-    return deleteFiles({ id });
+    return deleteFiles({ mapsDir, id });
   } catch (e) {
     return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
   }
 }
 
-type CreateMapOpts = {
+type UpsertMapOpts = {
+  // a map ID that this upsert will replace (if the mapFile is valid)
+  id?: string,
   uploader: string,
   // zip file of the map
   mapFile: ArrayBuffer,
@@ -208,48 +210,67 @@ type CreateMapOpts = {
 export const enum CreateMapError {
   TOO_MANY_ID_GEN_ATTEMPTS = 'too_many_id_gen_attempts',
 }
-export async function createMap(
+export async function upsertMap(
   mapsDir: string,
-  opts: CreateMapOpts,
+  opts: UpsertMapOpts,
 ): PromisedResult<
   PDMap,
   S3Error | DbError | CreateMapError | ValidateMapError | ValidateMapDifficultyError
 > {
   const pool = getPool();
-  const id = await generateId(IdDomain.MAPS, async id => (await getMap(id)).success);
+  const id = opts.id ?? await generateId(IdDomain.MAPS, async id => (await getMap(id)).success);
   if (id == null) {
     return { success: false, errors: [{ type: CreateMapError.TOO_MANY_ID_GEN_ATTEMPTS }] };
   }
 
-  const mapResult = await storeFile({ id, mapsDir: mapsDir, mapFile: opts.mapFile });
-
-  if (!mapResult.success) {
-    return mapResult;
+  const buffer = Buffer.from(opts.mapFile);
+  const validatedMapResult = await validateMap({ id, mapsDir: mapsDir, buffer });
+  if (!validatedMapResult.success) {
+    return validatedMapResult;
   }
-  const map = mapResult.value;
+
+  const { title, artist, author, description, complexity, difficulties, albumArtFiles } =
+    validatedMapResult.value;
+
+  // We are updating a map; delete the old file off S3 first
+  if (opts.id) {
+    const deleteResult = await deleteFiles({ mapsDir, id });
+    if (!deleteResult.success) {
+      return deleteResult;
+    }
+  }
+  const uploadResult = await uploadFiles({ id: id, mapsDir: mapsDir, buffer, albumArtFiles });
+  if (!uploadResult.success) {
+    return uploadResult;
+  }
+  const albumArt = uploadResult.value;
 
   const now = new Date();
   try {
     const insertedMap = await db
-      .insert(
+      .upsert(
         'maps',
         snakeCaseKeys({
           id,
           submissionDate: now,
-          title: map.title,
-          artist: map.artist,
-          author: map.author || null,
+          title: title,
+          artist: artist,
+          author: author || null,
           uploader: opts.uploader,
-          albumArt: map.albumArt || null,
-          description: map.description || null,
-          complexity: checkExists(map.complexity, 'complexity'),
+          albumArt: albumArt || null,
+          description: description || null,
+          complexity: checkExists(complexity, 'complexity'),
         }),
+        ['id'],
       )
       .run(pool);
+    if (opts.id) {
+      await db.deletes('difficulties', snakeCaseKeys({ mapId: id })).run(pool);
+    }
     const insertedDifficulties = await db
       .insert(
         'difficulties',
-        map.difficulties.map(d =>
+        difficulties.map(d =>
           snakeCaseKeys({
             mapId: id,
             difficulty: d.difficulty || null,
@@ -284,16 +305,15 @@ export const enum ValidateMapError {
   NO_DATA = 'no_data',
   MISSING_ALBUM_ART = 'missing_album_art',
 }
-async function storeFile(
-  opts: { id: string, mapsDir: string, mapFile: ArrayBuffer },
+async function validateMap(
+  opts: { id: string, mapsDir: string, buffer: Buffer },
 ): PromisedResult<
-  RawMap & Pick<PDMap, 'albumArt'>,
-  S3Error | ValidateMapError | ValidateMapDifficultyError
+  RawMap & { albumArtFiles: unzipper.File[] },
+  ValidateMapError | ValidateMapDifficultyError
 > {
-  const buffer = Buffer.from(opts.mapFile);
   let map: unzipper.CentralDirectory;
   try {
-    map = await unzipper.Open.buffer(buffer);
+    map = await unzipper.Open.buffer(opts.buffer);
   } catch (e) {
     // Failed to open zip -- corrupted, or incorrect format
     return { success: false, errors: [{ type: ValidateMapError.NO_DATA }] };
@@ -308,34 +328,8 @@ async function storeFile(
   if (mapName == null || !files.every(f => path.dirname(f.path) === mapName)) {
     return { success: false, errors: [{ type: ValidateMapError.INCORRECT_FOLDER_STRUCTURE }] };
   }
-  const validatedResult = await validateMapFiles({ expectedMapName: mapName, mapFiles: files });
-  if (!validatedResult.success) {
-    return validatedResult;
-  }
-  const { title, artist, author, description, complexity, difficulties, albumArtFiles } =
-    validatedResult.value;
-  const uploadResult = await uploadFiles({
-    id: opts.id,
-    mapsDir: opts.mapsDir,
-    buffer,
-    albumArtFiles,
-  });
-  if (!uploadResult.success) {
-    return uploadResult;
-  }
-
-  return {
-    success: true,
-    value: {
-      title,
-      artist,
-      author,
-      description,
-      complexity,
-      difficulties,
-      albumArt: uploadResult.value,
-    },
-  };
+  const validatedResult = validateMapFiles({ expectedMapName: mapName, mapFiles: files });
+  return validatedResult;
 }
 
 function allExists<T>(a: (T | undefined)[]): a is T[] {

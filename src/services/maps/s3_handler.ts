@@ -75,7 +75,9 @@ export async function uploadFiles(
   };
 }
 
-export async function deleteFiles(opts: { id: string }): Promise<Result<undefined, S3Error>> {
+export async function deleteFiles(
+  opts: { mapsDir: string, id: string },
+): Promise<Result<undefined, S3Error>> {
   try {
     const s3 = getS3Client();
     await s3.client.send(
@@ -84,6 +86,9 @@ export async function deleteFiles(opts: { id: string }): Promise<Result<undefine
   } catch (e) {
     return { success: false, errors: [{ type: S3Error.S3_DELETE_ERROR }] };
   }
+
+  const albumArtFolderPath = path.resolve(opts.mapsDir, opts.id);
+  await fs.rm(albumArtFolderPath, { recursive: true, force: true });
 
   return { success: true, value: undefined };
 }

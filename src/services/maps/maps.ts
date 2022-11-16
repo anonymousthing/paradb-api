@@ -18,13 +18,13 @@ import { S3Error } from 'services/maps/s3_handler';
 import { getUserSession } from 'session/session';
 import {
   convertToMeilisearchMap,
-  createMap,
   CreateMapError,
   deleteMap,
   getMap,
   GetMapError,
   MeilisearchMap,
   searchMaps,
+  upsertMap,
   ValidateMapDifficultyError,
   ValidateMapError,
 } from './maps_repo';
@@ -137,7 +137,7 @@ export async function createMapsRouter(mapsDir: string) {
       });
     }
 
-    const deleteResult = await deleteMap(id);
+    const deleteResult = await deleteMap({ id, mapsDir });
     try {
       await mapsIndex.deleteDocument(id);
     } catch (e) {
@@ -173,7 +173,11 @@ export async function createMapsRouter(mapsDir: string) {
         return;
       }
       const submitMapReq = deserializeSubmitMapRequest(req.body);
-      const result = await createMap(mapsDir, { uploader: user.id, mapFile: submitMapReq.mapData });
+      const result = await upsertMap(mapsDir, {
+        id: submitMapReq.id,
+        uploader: user.id,
+        mapFile: submitMapReq.mapData,
+      });
       if (!result.success) {
         // TODO: report all errors back to the client and not just the first one
         const [statusCode, message] = submitErrorMap[result.errors[0].type];
