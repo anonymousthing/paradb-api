@@ -8,8 +8,8 @@
     "preferSingleLine": true,
     "arrowFunction.useParentheses": "preferNone",
     "jsx.multiLineParens": "always",
-    // "memberExpression.preferSingleLine": "false",
-    // "memberExpression.linePerExpression": "true",
+    "memberExpression.preferSingleLine": "false",
+    "memberExpression.linePerExpression": "true",
     "typeLiteral.separatorKind": "comma",
     "jsxSelfClosingElement.spaceBeforeSlash": false
   },

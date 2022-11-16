@@ -64,15 +64,14 @@ export function installSession() {
       {},
       async (username: string, password: string, done: VerifiedFn) => {
         const result = await getUser({ by: 'username', username });
-        if (!result.success) {
+        if (
+          !result.success
+        ) {
           return done(null, false, { message: 'invalid-credentials' });
         }
         const user = result
           .value;
-        const isValid = await validatePassword(
-          password,
-          user.password,
-        );
+        const isValid = await validatePassword(password, user.password);
         if (!isValid) {
           return done(null, false, { message: 'invalid-credentials' });
         }

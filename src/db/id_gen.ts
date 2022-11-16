@@ -7,9 +7,11 @@ export const enum IdDomain {
 }
 const ID_LENGTH = 6;
 function idGen(domain: IdDomain) {
-  return domain
-    + crypto.randomBytes(Math.ceil(ID_LENGTH / 2)).toString('hex').slice(0, ID_LENGTH)
-      .toUpperCase();
+  return domain + crypto
+    .randomBytes(Math.ceil(ID_LENGTH / 2))
+    .toString('hex')
+    .slice(0, ID_LENGTH)
+    .toUpperCase();
 }
 
 export async function generateId(

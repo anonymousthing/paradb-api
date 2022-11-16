@@ -33,18 +33,19 @@ export async function findMaps(by?: FindMapsBy, userId?: string): PromisedResult
   const whereable = by ? { id: db.conditions.isIn(by.ids) } : db.all;
 
   try {
-    const maps = await db.select('maps', whereable, {
-      lateral: {
-        difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
-          columns: ['difficulty', 'difficulty_name'],
-        }),
-        favorites: db.count('favorites', { map_id: db.parent('id') }),
-        ...(userId
-          ? {
-            userProjection: db.selectOne(
-              'favorites',
-              { map_id: db.parent('id'), user_id: userId },
-              {
+    const maps = await db
+      .select('maps', whereable, {
+        lateral: {
+          difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
+            columns: ['difficulty', 'difficulty_name'],
+          }),
+          favorites: db.count('favorites', { map_id: db.parent('id') }),
+          ...(userId
+            ? {
+              userProjection: db.selectOne('favorites', {
+                map_id: db.parent('id'),
+                user_id: userId,
+              }, {
                 columns: [],
                 lateral: {
                   isFavorited: db.selectOne('favorites', {
@@ -52,29 +53,33 @@ export async function findMaps(by?: FindMapsBy, userId?: string): PromisedResult
                     user_id: userId,
                   }, { alias: 'favorites2' }),
                 },
-              },
-            ),
-          }
-          : {}),
-      },
-      columns: [
-        'id',
-        'submission_date',
-        'title',
-        'artist',
-        'author',
-        'uploader',
-        'description',
-        'complexity',
-        'album_art',
-      ],
-      order: { by: 'title', direction: 'ASC' },
-    }).run(pool);
+              }),
+            }
+            : {}),
+        },
+        columns: [
+          'id',
+          'submission_date',
+          'title',
+          'artist',
+          'author',
+          'uploader',
+          'description',
+          'complexity',
+          'album_art',
+        ],
+        order: { by: 'title', direction: 'ASC' },
+      })
+      .run(pool);
     return {
       success: true,
       value: maps.map(m => ({
         ...camelCaseKeys(m),
-        userProjection: { isFavorited: !!m.userProjection?.isFavorited },
+        userProjection: {
+          isFavorited: !!m
+            .userProjection
+            ?.isFavorited,
+        },
       })),
     };
   } catch (e) {
@@ -133,32 +138,35 @@ export const enum GetMapError {
 export async function getMap(mapId: string, userId?: string): PromisedResult<PDMap, GetMapError> {
   const pool = getPool();
   try {
-    const map = await db.selectOne('maps', { id: mapId }, {
-      lateral: {
-        difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
-          columns: ['difficulty', 'difficulty_name'],
-        }),
-        favorites: db.count('favorites', { map_id: db.parent('id') }),
-      },
-      columns: [
-        'id',
-        'submission_date',
-        'title',
-        'artist',
-        'author',
-        'uploader',
-        'description',
-        'complexity',
-        'album_art',
-      ],
-    }).run(pool);
+    const map = await db
+      .selectOne('maps', { id: mapId }, {
+        lateral: {
+          difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
+            columns: ['difficulty', 'difficulty_name'],
+          }),
+          favorites: db.count('favorites', { map_id: db.parent('id') }),
+        },
+        columns: [
+          'id',
+          'submission_date',
+          'title',
+          'artist',
+          'author',
+          'uploader',
+          'description',
+          'complexity',
+          'album_art',
+        ],
+      })
+      .run(pool);
     if (map == null) {
       return { success: false, errors: [{ type: GetMapError.MISSING_MAP }] };
     }
     const userProjection = userId
       ? {
-        isFavorited:
-          !!(await db.selectOne('favorites', { map_id: mapId, user_id: userId }).run(pool)),
+        isFavorited: !!(await db
+          .selectOne('favorites', { map_id: mapId, user_id: userId })
+          .run(pool)),
       }
       : undefined;
     return { success: true, value: { ...camelCaseKeys(map), userProjection } };
@@ -222,30 +230,34 @@ export async function createMap(
 
   const now = new Date();
   try {
-    const insertedMap = await db.insert(
-      'maps',
-      snakeCaseKeys({
-        id,
-        submissionDate: now,
-        title: map.title,
-        artist: map.artist,
-        author: map.author || null,
-        uploader: opts.uploader,
-        albumArt: map.albumArt || null,
-        description: map.description || null,
-        complexity: checkExists(map.complexity, 'complexity'),
-      }),
-    ).run(pool);
-    const insertedDifficulties = await db.insert(
-      'difficulties',
-      map.difficulties.map(d =>
+    const insertedMap = await db
+      .insert(
+        'maps',
         snakeCaseKeys({
-          mapId: id,
-          difficulty: d.difficulty || null,
-          difficultyName: checkExists(d.difficultyName, 'difficultyName'),
-        })
-      ),
-    ).run(pool);
+          id,
+          submissionDate: now,
+          title: map.title,
+          artist: map.artist,
+          author: map.author || null,
+          uploader: opts.uploader,
+          albumArt: map.albumArt || null,
+          description: map.description || null,
+          complexity: checkExists(map.complexity, 'complexity'),
+        }),
+      )
+      .run(pool);
+    const insertedDifficulties = await db
+      .insert(
+        'difficulties',
+        map.difficulties.map(d =>
+          snakeCaseKeys({
+            mapId: id,
+            difficulty: d.difficulty || null,
+            difficultyName: checkExists(d.difficultyName, 'difficultyName'),
+          })
+        ),
+      )
+      .run(pool);
     return {
       success: true,
       value: camelCaseKeys({
@@ -382,9 +394,10 @@ export async function validateMapFiles(
     }
   }
 
-  const albumArtFiles = validDifficultyResults.map(v => v.value.albumArt).filter((s): s is string =>
-    s != null
-  ).map(fn => opts.mapFiles.find(f => path.basename(f.path) === fn));
+  const albumArtFiles = validDifficultyResults
+    .map(v => v.value.albumArt)
+    .filter((s): s is string => s != null)
+    .map(fn => opts.mapFiles.find(f => path.basename(f.path) === fn));
 
   if (!allExists(albumArtFiles)) {
     return { success: false, errors: [{ type: ValidateMapError.MISSING_ALBUM_ART }] };
