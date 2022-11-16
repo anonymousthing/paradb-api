@@ -173,26 +173,52 @@ export async function createMapsRouter(mapsDir: string) {
         return;
       }
       const submitMapReq = deserializeSubmitMapRequest(req.body);
-      const result = await upsertMap(mapsDir, {
+
+      if (submitMapReq.id) {
+        const mapResult = await getMap(submitMapReq.id);
+        if (!mapResult.success) {
+          return error({
+            res,
+            statusCode: 404,
+            errorSerializer: serializeSubmitMapError,
+            errorBody: {},
+            message: `Could not find specified map to resubmit: ${submitMapReq.id}`,
+            resultError: mapResult,
+          });
+        }
+        if (mapResult.value.uploader !== user.id) {
+          return error({
+            res,
+            statusCode: 403,
+            errorSerializer: serializeSubmitMapError,
+            errorBody: {},
+            message: `Not authorized to modify the specified map: ${submitMapReq.id}`,
+          });
+        }
+      }
+
+      const submitMapResult = await upsertMap(mapsDir, {
         id: submitMapReq.id,
         uploader: user.id,
         mapFile: submitMapReq.mapData,
       });
-      if (!result.success) {
+      if (!submitMapResult.success) {
         // TODO: report all errors back to the client and not just the first one
-        const [statusCode, message] = submitErrorMap[result.errors[0].type];
+        const [statusCode, message] = submitErrorMap[submitMapResult.errors[0].type];
         return error({
           res,
           statusCode,
           errorSerializer: serializeSubmitMapError,
           errorBody: {},
           message,
-          resultError: result,
+          resultError: submitMapResult,
         });
       }
       // Update search index
       try {
-        await mapsIndex.addDocuments([convertToMeilisearchMap(result.value)], { primaryKey: 'id' });
+        await mapsIndex.addDocuments([convertToMeilisearchMap(submitMapResult.value)], {
+          primaryKey: 'id',
+        });
       } catch (e) {
         return error({
           res,
@@ -207,7 +233,7 @@ export async function createMapsRouter(mapsDir: string) {
         });
       }
       return res.send(
-        Buffer.from(serializeSubmitMapResponse({ success: true, id: result.value.id })),
+        Buffer.from(serializeSubmitMapResponse({ success: true, id: submitMapResult.value.id })),
       );
     });
   });

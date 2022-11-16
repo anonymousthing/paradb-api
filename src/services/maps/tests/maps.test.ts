@@ -3,7 +3,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { _unwrap } from 'base/result';
 import * as fs from 'fs/promises';
-import { testAuthenticate, testPost, testUser } from 'jest_helpers';
+import { testAuthenticate, testPost, testUser, testUser2 } from 'jest_helpers';
 import { deserializeSubmitMapResponse, serializeSubmitMapRequest } from 'paradb-api-schema';
 import * as path from 'path';
 import { getMap } from 'services/maps/maps_repo';
@@ -74,6 +74,27 @@ describe('maps handler', () => {
 
     expect(s3Mock).toHaveReceivedCommandTimes(PutObjectCommand, 2);
     expect(s3Mock).toHaveReceivedCommandTimes(DeleteObjectCommand, 1);
+  });
+
+  it("does not allow a user to resubmit another user's maps", async () => {
+    const { response } = await testMapUpload('files/Test_valid.zip');
+    expect(response).toEqual({ success: true, id: expect.stringMatching(/^M[0-9A-F]{6}$/) });
+    const id = (response as Extract<typeof response, { success: true }>).id;
+
+    const cookie = await testAuthenticate(testUser2);
+    const newMap = await fs.readFile(path.resolve(__dirname, 'files/Test_valid2.zip'));
+    const resp = await testPost(
+      '/api/maps/submit',
+      serializeSubmitMapRequest,
+      deserializeSubmitMapResponse,
+      { id, mapData: new Uint8Array(newMap.buffer) },
+      cookie,
+    );
+    expect(resp).toEqual({
+      success: false,
+      errorMessage: `Not authorized to modify the specified map: ${id}`,
+      statusCode: 403,
+    });
   });
 
   describe('fails when', () => {

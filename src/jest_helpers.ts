@@ -48,16 +48,20 @@ export const testUser2 = {
   email: 'test2@test.com',
   password: 'Sessions-Blurb-Dealing1',
 };
-export const testAuthenticate = async () => {
+export const testAuthenticate = async (
+  user?: { username: string, email: string, password: string },
+) => {
   const resp = await testServer()
     .post('/api/users/signup')
     .type('application/octet-stream')
     .send(
-      serializeSignupRequest({
-        email: testUser.email,
-        password: testUser.password,
-        username: testUser.username,
-      }),
+      serializeSignupRequest(
+        user ?? {
+          email: testUser.email,
+          password: testUser.password,
+          username: testUser.username,
+        },
+      ),
     );
 
   expect(deserializeSignupResponse(resp.body)).toEqual({ success: true });

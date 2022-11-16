@@ -1,6 +1,4 @@
-import type { Config } from 'jest';
-
-const config: Config = {
+const config = {
   // preset: 'ts-jest',
   transform: { '\\.ts$': 'esbuild-runner/jest' },
   testEnvironment: 'node',
