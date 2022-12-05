@@ -173,6 +173,15 @@ export async function createMapsRouter(mapsDir: string) {
         return;
       }
       const submitMapReq = deserializeSubmitMapRequest(req.body);
+      if (submitMapReq.mapData.byteLength > 1024 * 1024 * 40) { // 40MiB. We use MiB because that's what Windows displays in Explorer and therefore what users will expect.
+        return error({
+          res,
+          statusCode: 400,
+          errorSerializer: serializeSubmitMapError,
+          errorBody: {},
+          message: 'File is over the filesize limit (40MB)',
+        });
+      }
 
       if (submitMapReq.id) {
         const mapResult = await getMap(submitMapReq.id);
