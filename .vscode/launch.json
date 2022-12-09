@@ -5,14 +5,15 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "pwa-node",
+      "type": "node",
       "request": "launch",
       "name": "Start server",
-      "runtimeArgs": ["--nolazy", "-r", "ts-node/register/transpile-only"],
-      "args": ["src/index.ts"],
+      "runtimeArgs": ["--nolazy", "-r", "esbuild-runner/register"],
+      "program": "${workspaceFolder}/src/index.ts",
       "skipFiles": [
         "<node_internals>/**"
-      ]
+      ],
+      "sourceMaps": true
     }
   ]
 }

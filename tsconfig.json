@@ -21,16 +21,6 @@
     "outDir": "dist",
     "skipLibCheck": true
   },
-  "ts-node": {
-    "compilerOptions": {
-      "target": "es2017",
-      "module": "node16"
-    },
-    "require": [
-      "tsconfig-paths/register"
-    ],
-    "files": true
-  },
   "include": [
     "src",
     "build"
