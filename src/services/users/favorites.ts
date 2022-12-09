@@ -1,7 +1,7 @@
 import { error } from 'api/helpers';
 import { getEnvVars } from 'env';
 import { Response, Router } from 'express';
-import MeiliSearch from 'meilisearch';
+import { MeiliSearch } from 'meilisearch';
 import {
   deserializeSetFavoriteMapsRequest,
   serializeApiError,
