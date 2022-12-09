@@ -6,6 +6,7 @@ CREATE TABLE maps (
   artist varchar(256) not null,
   author varchar(256),
   uploader varchar(256) not null,
+  download_count int not null default 0,
   description text,
   complexity int,
   album_art text

@@ -5,7 +5,7 @@ import { generateId, IdDomain } from 'db/id_gen';
 import { getPool } from 'db/pool';
 // @ts-ignore
 import * as encoding from 'encoding';
-import { Index } from 'meilisearch';
+import MeiliSearch, { Index } from 'meilisearch';
 import { MapSortableAttributes, PDMap } from 'paradb-api-schema';
 import path from 'path';
 import { deleteFiles, S3Error, uploadFiles } from 'services/maps/s3_handler';
@@ -16,188 +16,48 @@ const exists = <T>(t: T | undefined): t is NonNullable<T> => !!t;
 
 export type MeilisearchMap = {
   id: string,
-  title: string,
-  artist: string,
-  author: string,
-  uploader: string,
-  description: string,
-  submissionDate: number,
-  favorites: number,
+  title?: string,
+  artist?: string,
+  author?: string,
+  uploader?: string,
+  downloadCount?: number,
+  description?: string,
+  submissionDate?: number,
+  favorites?: number,
 };
-export type FindMapsBy = { by: 'id', ids: string[] };
-
-// TODO: add search parameters to findMaps
-export async function findMaps(by?: FindMapsBy, userId?: string): PromisedResult<PDMap[], DbError> {
-  const pool = getPool();
-
-  const whereable = by ? { id: db.conditions.isIn(by.ids) } : db.all;
-
-  try {
-    const maps = await db
-      .select('maps', whereable, {
-        lateral: {
-          difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
-            columns: ['difficulty', 'difficulty_name'],
-          }),
-          favorites: db.count('favorites', { map_id: db.parent('id') }),
-          ...(userId
-            ? {
-              userProjection: db.selectOne('favorites', {
-                map_id: db.parent('id'),
-                user_id: userId,
-              }, {
-                columns: [],
-                lateral: {
-                  isFavorited: db.selectOne('favorites', {
-                    map_id: db.parent('map_id'),
-                    user_id: userId,
-                  }, { alias: 'favorites2' }),
-                },
-              }),
-            }
-            : {}),
-        },
-        columns: [
-          'id',
-          'submission_date',
-          'title',
-          'artist',
-          'author',
-          'uploader',
-          'description',
-          'complexity',
-          'album_art',
-        ],
-        order: { by: 'title', direction: 'ASC' },
-      })
-      .run(pool);
-    return {
-      success: true,
-      value: maps.map(m => ({
-        ...camelCaseKeys(m),
-        userProjection: {
-          isFavorited: !!m
-            .userProjection
-            ?.isFavorited,
-        },
-      })),
-    };
-  } catch (e) {
-    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
-  }
-}
-
-/** User id is used for projections (favorites, etc) */
-export async function searchMaps(
-  index: Index<MeilisearchMap>,
-  searchOptions: {
-    user?: string,
-    query: string,
-    sort?: MapSortableAttributes,
-    sortDirection?: 'asc' | 'desc',
-    offset: number,
-    limit: number,
-  },
-): PromisedResult<PDMap[], DbError> {
-  const { user, query, offset, limit, sort, sortDirection } = searchOptions;
-  const response = await index.search<MeilisearchMap>(query, {
-    offset,
-    limit,
-    sort: sort && sortDirection ? [`${sort}:${sortDirection}`] : undefined,
-  });
-  const searchResults = response.hits;
-  const ids = searchResults.map(r => r.id);
-
-  const mapsResult = await findMaps({ by: 'id', ids }, user);
-  if (!mapsResult.success) {
-    return mapsResult;
-  }
-
-  const maps = new Map(mapsResult.value.map(m => [m.id, m]));
-  return { success: true, value: searchResults.map(m => maps.get(m.id)).filter(exists) };
-}
-
-export function convertToMeilisearchMap(map: PDMap): MeilisearchMap {
-  const { id, title, artist, author, uploader, description, submissionDate, favorites } = map;
+export function convertToMeilisearchMap(map: Partial<PDMap> & { id: string }): MeilisearchMap {
+  const {
+    id,
+    title,
+    artist,
+    author,
+    uploader,
+    downloadCount,
+    description,
+    submissionDate,
+    favorites,
+  } = map;
   return {
     id,
     title,
     artist,
     author: author || '',
     uploader,
+    downloadCount,
     description: description || '',
-    submissionDate: Number(new Date(submissionDate)),
+    submissionDate: submissionDate != null ? Number(new Date(submissionDate)) : undefined,
     favorites,
   };
 }
+
+export type FindMapsBy = { by: 'id', ids: string[] };
 
 export const enum GetMapError {
   MISSING_MAP = 'missing_map',
   UNKNOWN_DB_ERROR = 'unknown_db_error',
 }
-export async function getMap(mapId: string, userId?: string): PromisedResult<PDMap, GetMapError> {
-  const pool = getPool();
-  try {
-    const map = await db
-      .selectOne('maps', { id: mapId }, {
-        lateral: {
-          difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
-            columns: ['difficulty', 'difficulty_name'],
-          }),
-          favorites: db.count('favorites', { map_id: db.parent('id') }),
-        },
-        columns: [
-          'id',
-          'submission_date',
-          'title',
-          'artist',
-          'author',
-          'uploader',
-          'description',
-          'complexity',
-          'album_art',
-        ],
-      })
-      .run(pool);
-    if (map == null) {
-      return { success: false, errors: [{ type: GetMapError.MISSING_MAP }] };
-    }
-    const userProjection = userId
-      ? {
-        isFavorited: !!(await db
-          .selectOne('favorites', { map_id: mapId, user_id: userId })
-          .run(pool)),
-      }
-      : undefined;
-    return { success: true, value: { ...camelCaseKeys(map), userProjection } };
-  } catch (e) {
-    return { success: false, errors: [wrapError(e, GetMapError.UNKNOWN_DB_ERROR)] };
-  }
-}
-
 export const enum DeleteMapError {
   MISSING_MAP = 'missing_map',
-}
-export async function deleteMap(
-  { id, mapsDir }: { id: string, mapsDir: string },
-): PromisedResult<undefined, DbError | DeleteMapError | S3Error> {
-  const pool = getPool();
-  try {
-    // Delete dependent tables / foreign keys first
-    await Promise.all([
-      db.deletes('difficulties', { map_id: id }).run(pool),
-      db.deletes('favorites', { map_id: id }).run(pool),
-    ]);
-    // Delete the map
-    // TODO: soft deletion
-    const deleted = await db.deletes('maps', { id }).run(pool);
-    if (deleted.length === 0) {
-      return { success: false, errors: [{ type: DeleteMapError.MISSING_MAP }] };
-    }
-    return deleteFiles({ mapsDir, id });
-  } catch (e) {
-    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
-  }
 }
 
 type UpsertMapOpts = {
@@ -209,89 +69,6 @@ type UpsertMapOpts = {
 };
 export const enum CreateMapError {
   TOO_MANY_ID_GEN_ATTEMPTS = 'too_many_id_gen_attempts',
-}
-export async function upsertMap(
-  mapsDir: string,
-  opts: UpsertMapOpts,
-): PromisedResult<
-  PDMap,
-  S3Error | DbError | CreateMapError | ValidateMapError | ValidateMapDifficultyError
-> {
-  const pool = getPool();
-  const id = opts.id ?? await generateId(IdDomain.MAPS, async id => (await getMap(id)).success);
-  if (id == null) {
-    return { success: false, errors: [{ type: CreateMapError.TOO_MANY_ID_GEN_ATTEMPTS }] };
-  }
-
-  const buffer = Buffer.from(opts.mapFile);
-  const validatedMapResult = await validateMap({ id, mapsDir: mapsDir, buffer });
-  if (!validatedMapResult.success) {
-    return validatedMapResult;
-  }
-
-  const { title, artist, author, description, complexity, difficulties, albumArtFiles } =
-    validatedMapResult.value;
-
-  // We are updating a map; delete the old file off S3 first
-  if (opts.id) {
-    const deleteResult = await deleteFiles({ mapsDir, id });
-    if (!deleteResult.success) {
-      return deleteResult;
-    }
-  }
-  const uploadResult = await uploadFiles({ id: id, mapsDir: mapsDir, buffer, albumArtFiles });
-  if (!uploadResult.success) {
-    return uploadResult;
-  }
-  const albumArt = uploadResult.value;
-
-  const now = new Date();
-  try {
-    const insertedMap = await db
-      .upsert(
-        'maps',
-        snakeCaseKeys({
-          id,
-          submissionDate: now,
-          title: title,
-          artist: artist,
-          author: author || null,
-          uploader: opts.uploader,
-          albumArt: albumArt || null,
-          description: description || null,
-          complexity: checkExists(complexity, 'complexity'),
-        }),
-        ['id'],
-      )
-      .run(pool);
-    if (opts.id) {
-      await db.deletes('difficulties', snakeCaseKeys({ mapId: id })).run(pool);
-    }
-    const insertedDifficulties = await db
-      .insert(
-        'difficulties',
-        difficulties.map(d =>
-          snakeCaseKeys({
-            mapId: id,
-            difficulty: d.difficulty || null,
-            difficultyName: checkExists(d.difficultyName, 'difficultyName'),
-          })
-        ),
-      )
-      .run(pool);
-    return {
-      success: true,
-      value: camelCaseKeys({
-        ...insertedMap,
-        difficulties: insertedDifficulties,
-        // A newly created map will never be favorited
-        favorites: 0,
-        userProjection: { isFavorited: false },
-      }),
-    };
-  } catch (e) {
-    return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
-  }
 }
 
 type RawMap = Pick<
@@ -305,6 +82,309 @@ export const enum ValidateMapError {
   NO_DATA = 'no_data',
   MISSING_ALBUM_ART = 'missing_album_art',
 }
+export const enum ValidateMapDifficultyError {
+  INVALID_FORMAT = 'invalid_format',
+  MISSING_VALUES = 'missing_values',
+}
+export const enum MeilisearchError {
+  SEARCH_INDEX_ERROR = 'search-index-error',
+}
+
+export class MapsRepo {
+  constructor(private readonly meilisearchMaps: Index<MeilisearchMap>) {}
+
+  // TODO: add search parameters to findMaps
+  async findMaps(by?: FindMapsBy, userId?: string): PromisedResult<PDMap[], DbError> {
+    const pool = getPool();
+
+    const whereable = by ? { id: db.conditions.isIn(by.ids) } : db.all;
+
+    try {
+      const maps = await db
+        .select('maps', whereable, {
+          lateral: {
+            difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
+              columns: ['difficulty', 'difficulty_name'],
+            }),
+            favorites: db.count('favorites', { map_id: db.parent('id') }),
+            ...(userId
+              ? {
+                userProjection: db.selectOne('favorites', {
+                  map_id: db.parent('id'),
+                  user_id: userId,
+                }, {
+                  columns: [],
+                  lateral: {
+                    isFavorited: db.selectOne('favorites', {
+                      map_id: db.parent('map_id'),
+                      user_id: userId,
+                    }, { alias: 'favorites2' }),
+                  },
+                }),
+              }
+              : {}),
+          },
+          columns: [
+            'id',
+            'submission_date',
+            'title',
+            'artist',
+            'author',
+            'uploader',
+            'download_count',
+            'description',
+            'complexity',
+            'album_art',
+          ],
+          order: { by: 'title', direction: 'ASC' },
+        })
+        .run(pool);
+      return {
+        success: true,
+        value: maps.map(m => ({
+          ...camelCaseKeys(m),
+          userProjection: {
+            isFavorited: !!m
+              .userProjection
+              ?.isFavorited,
+          },
+        })),
+      };
+    } catch (e) {
+      return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
+    }
+  }
+
+  /** User id is used for projections (favorites, etc) */
+  async searchMaps(
+    searchOptions: {
+      user?: string,
+      query: string,
+      sort?: MapSortableAttributes,
+      sortDirection?: 'asc' | 'desc',
+      offset: number,
+      limit: number,
+    },
+  ): PromisedResult<PDMap[], DbError> {
+    const { user, query, offset, limit, sort, sortDirection } = searchOptions;
+    const response = await this.meilisearchMaps.search<MeilisearchMap>(query, {
+      offset,
+      limit,
+      sort: sort && sortDirection ? [`${sort}:${sortDirection}`] : undefined,
+    });
+    const searchResults = response.hits;
+    const ids = searchResults.map(r => r.id);
+
+    const mapsResult = await this.findMaps({ by: 'id', ids }, user);
+    if (!mapsResult.success) {
+      return mapsResult;
+    }
+
+    const maps = new Map(mapsResult.value.map(m => [m.id, m]));
+    return { success: true, value: searchResults.map(m => maps.get(m.id)).filter(exists) };
+  }
+
+  async getMap(mapId: string, userId?: string): PromisedResult<PDMap, GetMapError> {
+    const pool = getPool();
+    try {
+      const map = await db
+        .selectOne('maps', { id: mapId }, {
+          lateral: {
+            difficulties: db.select('difficulties', { map_id: db.parent('id') }, {
+              columns: ['difficulty', 'difficulty_name'],
+            }),
+            favorites: db.count('favorites', { map_id: db.parent('id') }),
+          },
+          columns: [
+            'id',
+            'submission_date',
+            'title',
+            'artist',
+            'author',
+            'uploader',
+            'download_count',
+            'description',
+            'complexity',
+            'album_art',
+          ],
+        })
+        .run(pool);
+      if (map == null) {
+        return { success: false, errors: [{ type: GetMapError.MISSING_MAP }] };
+      }
+      const userProjection = userId
+        ? {
+          isFavorited: !!(await db
+            .selectOne('favorites', { map_id: mapId, user_id: userId })
+            .run(pool)),
+        }
+        : undefined;
+      return { success: true, value: { ...camelCaseKeys(map), userProjection } };
+    } catch (e) {
+      return { success: false, errors: [wrapError(e, GetMapError.UNKNOWN_DB_ERROR)] };
+    }
+  }
+
+  private async updateMeilisearchMap(
+    map: Partial<PDMap> & { id: string },
+  ): PromisedResult<void, MeilisearchError> {
+    // Update search index
+    try {
+      await this.meilisearchMaps.updateDocuments([convertToMeilisearchMap(map)], {
+        primaryKey: 'id',
+      });
+    } catch (e) {
+      return {
+        success: false,
+        errors: [{ type: MeilisearchError.SEARCH_INDEX_ERROR, internalMessage: JSON.stringify(e) }],
+      };
+    }
+    return { success: true, value: undefined };
+  }
+
+  async incrementMapDownloadCount(mapId: string): PromisedResult<void, GetMapError> {
+    const pool = getPool();
+    try {
+      await db.serializable(pool, async client => {
+        const map = await db.selectOne('maps', { id: mapId }, { columns: ['download_count'] }).run(
+          client,
+        );
+        if (map == null) {
+          // TODO: wire a proper ResultError out of the `db.serializable`
+          throw new Error(`Could not find map id ${mapId} to increment download count`);
+        }
+        const updatedMap = await db
+          .update('maps', snakeCaseKeys({ downloadCount: map.download_count + 1 }), { id: mapId })
+          .run(client);
+
+        const meilisearchResp = await this.updateMeilisearchMap(camelCaseKeys(updatedMap[0]));
+        if (!meilisearchResp.success) {
+          // TODO: wire a proper ResultError out of the `db.serializable`
+          throw new Error(`Could not update search index`);
+        }
+      });
+    } catch (e) {
+      return { success: false, errors: [wrapError(e, GetMapError.UNKNOWN_DB_ERROR)] };
+    }
+    return { success: true, value: undefined };
+  }
+
+  async deleteMap(
+    { id, mapsDir }: { id: string, mapsDir: string },
+  ): PromisedResult<undefined, DbError | DeleteMapError | S3Error> {
+    const pool = getPool();
+    try {
+      // Delete dependent tables / foreign keys first
+      await Promise.all([
+        db.deletes('difficulties', { map_id: id }).run(pool),
+        db.deletes('favorites', { map_id: id }).run(pool),
+      ]);
+      // Delete the map
+      // TODO: soft deletion
+      const deleted = await db.deletes('maps', { id }).run(pool);
+      if (deleted.length === 0) {
+        return { success: false, errors: [{ type: DeleteMapError.MISSING_MAP }] };
+      }
+      await this.meilisearchMaps.deleteDocument(id);
+      return deleteFiles({ mapsDir, id });
+    } catch (e) {
+      return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
+    }
+  }
+
+  async upsertMap(
+    mapsDir: string,
+    opts: UpsertMapOpts,
+  ): PromisedResult<
+    PDMap,
+    | S3Error
+    | DbError
+    | CreateMapError
+    | ValidateMapError
+    | ValidateMapDifficultyError
+    | MeilisearchError
+  > {
+    const pool = getPool();
+    const id = opts.id
+      ?? await generateId(IdDomain.MAPS, async id => (await this.getMap(id)).success);
+    if (id == null) {
+      return { success: false, errors: [{ type: CreateMapError.TOO_MANY_ID_GEN_ATTEMPTS }] };
+    }
+
+    const buffer = Buffer.from(opts.mapFile);
+    const validatedMapResult = await validateMap({ id, mapsDir: mapsDir, buffer });
+    if (!validatedMapResult.success) {
+      return validatedMapResult;
+    }
+
+    const { title, artist, author, description, complexity, difficulties, albumArtFiles } =
+      validatedMapResult.value;
+
+    // We are updating a map; delete the old file off S3 first
+    if (opts.id) {
+      const deleteResult = await deleteFiles({ mapsDir, id });
+      if (!deleteResult.success) {
+        return deleteResult;
+      }
+    }
+    const uploadResult = await uploadFiles({ id: id, mapsDir: mapsDir, buffer, albumArtFiles });
+    if (!uploadResult.success) {
+      return uploadResult;
+    }
+    const albumArt = uploadResult.value;
+
+    const now = new Date();
+    try {
+      const insertedMap = await db
+        .upsert(
+          'maps',
+          snakeCaseKeys({
+            id,
+            submissionDate: now,
+            title: title,
+            artist: artist,
+            author: author || null,
+            uploader: opts.uploader,
+            albumArt: albumArt || null,
+            description: description || null,
+            complexity: checkExists(complexity, 'complexity'),
+          }),
+          ['id'],
+        )
+        .run(pool);
+      if (opts.id) {
+        await db.deletes('difficulties', snakeCaseKeys({ mapId: id })).run(pool);
+      }
+      const insertedDifficulties = await db
+        .insert(
+          'difficulties',
+          difficulties.map(d =>
+            snakeCaseKeys({
+              mapId: id,
+              difficulty: d.difficulty || null,
+              difficultyName: checkExists(d.difficultyName, 'difficultyName'),
+            })
+          ),
+        )
+        .run(pool);
+      const mapResult = camelCaseKeys({
+        ...insertedMap,
+        difficulties: insertedDifficulties,
+        // A newly created map will never be favorited
+        favorites: 0,
+        userProjection: { isFavorited: false },
+      });
+      const meilisearchResp = await this.updateMeilisearchMap(mapResult);
+      if (!meilisearchResp.success) {
+        return meilisearchResp;
+      }
+      return { success: true, value: mapResult };
+    } catch (e) {
+      return { success: false, errors: [wrapError(e, DbError.UNKNOWN_DB_ERROR)] };
+    }
+  }
+}
+
 async function validateMap(
   opts: { id: string, mapsDir: string, buffer: Buffer },
 ): PromisedResult<
@@ -335,7 +415,11 @@ async function validateMap(
 function allExists<T>(a: (T | undefined)[]): a is T[] {
   return a.every(t => t != null);
 }
-export async function validateMapFiles(
+type RawMapMetadata = Pick<
+  PDMap,
+  'title' | 'artist' | 'author' | 'albumArt' | 'description' | 'complexity'
+>;
+async function validateMapFiles(
   opts: { expectedMapName: string, mapFiles: unzipper.File[] },
 ): PromisedResult<
   RawMap & { albumArtFiles: unzipper.File[] },
@@ -417,14 +501,6 @@ export async function validateMapFiles(
   };
 }
 
-type RawMapMetadata = Pick<
-  PDMap,
-  'title' | 'artist' | 'author' | 'albumArt' | 'description' | 'complexity'
->;
-export const enum ValidateMapDifficultyError {
-  INVALID_FORMAT = 'invalid_format',
-  MISSING_VALUES = 'missing_values',
-}
 function validateMapMetadata(
   filename: string,
   mapBuffer: Buffer,

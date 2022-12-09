@@ -1,6 +1,6 @@
 import express from 'express';
 import { createMapsRouter } from 'services/maps/maps';
-import favoritesRouter from 'services/users/favorites';
+import { createFavoritesRouter } from 'services/users/favorites';
 import usersRouter from 'services/users/users';
 
 // Set MIME type for requests and responses to 'application/x-protobuf' to allow Cloudflare to use
@@ -26,6 +26,8 @@ export async function createApiRouter(mapsDir: string) {
 
   // Logged in routes
   apiRouter.use('/users', usersRouter);
+
+  const favoritesRouter = await createFavoritesRouter();
   apiRouter.use('/favorites', favoritesRouter);
 
   return apiRouter;
